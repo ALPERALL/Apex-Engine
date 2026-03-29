@@ -152,7 +152,7 @@ def _scan_pair(pair_name, yf_symbol, tf_key, tf_cfg, pair_type, risk_filter="hig
 
 
 def run_scan(pairs_filter="all", tf_filter="all", risk_filter="high", pair_name_filter=None):
-    """Tarama döngüsü — arka planda thread olarak çalışır."""
+    """Tek seferlik tarama."""
     global scan_status, stats_store
 
     with _scan_lock:
@@ -181,7 +181,6 @@ def run_scan(pairs_filter="all", tf_filter="all", risk_filter="high", pair_name_
             for tf_key, tf_cfg in tfs.items():
                 sig = _scan_pair(pname, ysym, tf_key, tf_cfg, ptype, risk_filter)
                 if sig:
-                    # Aynı parite+tf için çift sinyal önle
                     existing = [s for s in signal_store
                                 if s["pair"] == pname and s["tf_key"] == tf_key
                                 and s["status"] == "active"]
@@ -197,6 +196,34 @@ def run_scan(pairs_filter="all", tf_filter="all", risk_filter="high", pair_name_
 
     finally:
         scan_status["running"] = False
+
+
+# Aktif tarama ayarları (son kullanıcı tercihleri)
+_active_scan_config = {
+    "active":      False,
+    "pairs":       "all",
+    "timeframe":   "all",
+    "risk":        "high",
+    "pair_name":   None,
+    "interval":    300,   # saniye (5 dakika)
+}
+
+def _auto_scan_loop():
+    """Sürekli tarama döngüsü — arka planda çalışır."""
+    while True:
+        if _active_scan_config["active"]:
+            run_scan(
+                _active_scan_config["pairs"],
+                _active_scan_config["timeframe"],
+                _active_scan_config["risk"],
+                _active_scan_config["pair_name"],
+            )
+            check_results()
+        time.sleep(_active_scan_config["interval"])
+
+# Uygulama başlarken döngüyü başlat
+_loop_thread = threading.Thread(target=_auto_scan_loop, daemon=True)
+_loop_thread.start()
 
 
 def check_results():
@@ -256,19 +283,36 @@ def logout():
 def start_scan():
     if not session.get("auth"):
         return jsonify({"error": "Giriş yapılmadı"}), 403
-    data        = request.get_json() or {}
-    pairs       = data.get("pairs", "all")       # all / forex / crypto
-    tf          = data.get("timeframe", "all")
-    risk        = data.get("risk", "high")
-    pair_filter = data.get("pair_name", None)
+    data = request.get_json() or {}
 
+    # Sürekli tarama config'ini güncelle
+    _active_scan_config["active"]    = True
+    _active_scan_config["pairs"]     = data.get("pairs", "all")
+    _active_scan_config["timeframe"] = data.get("timeframe", "all")
+    _active_scan_config["risk"]      = data.get("risk", "high")
+    _active_scan_config["pair_name"] = data.get("pair_name", None)
+
+    # Hemen bir tarama başlat
     t = threading.Thread(
         target=run_scan,
-        args=(pairs, tf, risk, pair_filter),
-        daemon=True
+        args=(
+            _active_scan_config["pairs"],
+            _active_scan_config["timeframe"],
+            _active_scan_config["risk"],
+            _active_scan_config["pair_name"],
+        ),
+        daemon=True,
     )
     t.start()
-    return jsonify({"ok": True, "message": "Tarama başlatıldı"})
+    return jsonify({"ok": True, "message": "Sürekli tarama başlatıldı"})
+
+
+@app.route("/api/stop", methods=["POST"])
+def stop_scan():
+    if not session.get("auth"):
+        return jsonify({"error": "Giriş yapılmadı"}), 403
+    _active_scan_config["active"] = False
+    return jsonify({"ok": True, "message": "Tarama durduruldu"})
 
 
 @app.route("/api/signals")
@@ -305,3 +349,4 @@ def get_pairs():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False)
+ 
