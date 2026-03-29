@@ -1,1297 +1,1097 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="tr" data-theme="dark">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>APEX Signal Engine</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
-/* ── Reset & Variables ─────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
+/* ══════════════════════════════════════════════
+   TEMA SİSTEMİ
+══════════════════════════════════════════════ */
 :root {
-  --bg:        #080b0f;
-  --bg2:       #0d1117;
-  --bg3:       #111820;
-  --border:    rgba(255,255,255,0.07);
-  --border2:   rgba(255,255,255,0.12);
-  --text:      #e8edf2;
-  --muted:     #5a6a7a;
-  --accent:    #00d4ff;
-  --accent2:   #0099cc;
-  --green:     #00e676;
-  --red:       #ff3d5a;
-  --yellow:    #ffc107;
-  --gold:      #ffb300;
-  --glow:      0 0 30px rgba(0,212,255,0.15);
+  --accent:  #00d4ff;
+  --green:   #00e676;
+  --red:     #ff3d5a;
+  --yellow:  #ffc107;
+  --gold:    #ffb300;
   --font-mono: 'Space Mono', monospace;
-  --font-main: 'Syne', sans-serif;
+  --font:      'Syne', sans-serif;
+  --radius: 6px;
+  --transition: 0.2s ease;
+}
+[data-theme="dark"] {
+  --bg:     #080b0f; --bg2:#0d1117; --bg3:#111820;
+  --border: rgba(255,255,255,0.07); --border2:rgba(255,255,255,0.13);
+  --text:   #e8edf2; --muted:#5a6a7a; --shadow:rgba(0,0,0,0.5);
+}
+[data-theme="white"] {
+  --bg:#f4f6f9; --bg2:#ffffff; --bg3:#eef1f5;
+  --border:rgba(0,0,0,0.08); --border2:rgba(0,0,0,0.15);
+  --text:#1a202c; --muted:#8896a5; --shadow:rgba(0,0,0,0.1);
+  --accent:#0099cc;
+}
+[data-theme="midnight"] {
+  --bg:#010409; --bg2:#0d1117; --bg3:#161b22;
+  --border:rgba(99,179,237,0.1); --border2:rgba(99,179,237,0.2);
+  --text:#cdd9e5; --muted:#4a6080; --shadow:rgba(0,0,0,0.7);
+  --accent:#58a6ff;
+}
+[data-theme="matrix"] {
+  --bg:#000800; --bg2:#001200; --bg3:#001a00;
+  --border:rgba(0,255,65,0.12); --border2:rgba(0,255,65,0.25);
+  --text:#00ff41; --muted:#006400; --shadow:rgba(0,255,65,0.05);
+  --accent:#00ff41; --green:#00ff41;
+}
+[data-theme="sunset"] {
+  --bg:#0d0510; --bg2:#150820; --bg3:#1c0d2a;
+  --border:rgba(255,100,200,0.1); --border2:rgba(255,100,200,0.2);
+  --text:#f0d6ff; --muted:#7a4a9a; --shadow:rgba(0,0,0,0.5);
+  --accent:#ff6bcb; --green:#a0ff80;
 }
 
-html, body { height: 100%; }
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--font-main);
-  overflow-x: hidden;
-  min-height: 100vh;
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow-x:hidden}
+body{background:var(--bg);color:var(--text);font-family:var(--font);transition:background 0.3s,color 0.3s}
+
+/* Grid arka plan */
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:linear-gradient(rgba(0,212,255,.012) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,212,255,.012) 1px,transparent 1px);
+  background-size:44px 44px;pointer-events:none;z-index:0;
 }
+[data-theme="white"] body::before,[data-theme="matrix"] body::before{display:none}
 
-/* ── Grid noise overlay ────────────────────────────────── */
-body::before {
-  content: '';
-  position: fixed; inset: 0;
-  background-image:
-    linear-gradient(rgba(0,212,255,0.015) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,212,255,0.015) 1px, transparent 1px);
-  background-size: 40px 40px;
-  pointer-events: none;
-  z-index: 0;
+/* ══ AUTH EKRANI ════════════════════════════ */
+#auth-screen{
+  position:fixed;inset:0;z-index:200;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--bg);
 }
-
-/* ── Login Screen ──────────────────────────────────────── */
-#login-screen {
-  position: fixed; inset: 0;
-  display: flex; align-items: center; justify-content: center;
-  z-index: 100;
-  background: var(--bg);
+.auth-card{
+  width:420px;background:var(--bg2);
+  border:1px solid var(--border2);border-radius:var(--radius);
+  padding:48px 40px;position:relative;
+  box-shadow:0 0 60px rgba(0,212,255,.08),0 40px 80px var(--shadow);
+  animation:fadeUp .4s ease;
 }
-
-.login-card {
-  width: 380px;
-  background: var(--bg2);
-  border: 1px solid var(--border2);
-  border-radius: 4px;
-  padding: 48px 40px;
-  position: relative;
-  box-shadow: var(--glow), 0 40px 80px rgba(0,0,0,0.6);
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.auth-card::before{
+  content:'';position:absolute;top:0;left:30%;right:30%;height:2px;
+  background:linear-gradient(90deg,transparent,var(--accent),transparent);
 }
+.auth-logo{text-align:center;margin-bottom:32px}
+.auth-logo .brand{font-size:30px;font-weight:800;letter-spacing:8px;color:var(--accent)}
+.auth-logo .sub{font-family:var(--font-mono);font-size:9px;color:var(--muted);letter-spacing:3px;margin-top:4px}
 
-.login-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 40px; right: 40px;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+.auth-tabs{display:flex;gap:0;margin-bottom:28px;border:1px solid var(--border2);border-radius:var(--radius);overflow:hidden}
+.auth-tab{flex:1;padding:10px;text-align:center;font-size:11px;font-weight:700;letter-spacing:2px;
+  text-transform:uppercase;cursor:pointer;transition:all .2s;background:transparent;border:none;color:var(--muted)}
+.auth-tab.active{background:var(--accent);color:#000}
+
+.form-group{margin-bottom:16px}
+.form-label{font-family:var(--font-mono);font-size:9px;letter-spacing:2px;color:var(--muted);
+  text-transform:uppercase;display:block;margin-bottom:6px}
+.form-input{
+  width:100%;background:var(--bg3);border:1px solid var(--border);
+  border-radius:var(--radius);padding:12px 14px;color:var(--text);
+  font-family:var(--font-mono);font-size:13px;outline:none;transition:border-color .2s;
 }
-
-.login-logo {
-  text-align: center;
-  margin-bottom: 36px;
+.form-input:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(0,212,255,.1)}
+.form-select{
+  width:100%;background:var(--bg3);border:1px solid var(--border);
+  border-radius:var(--radius);padding:12px 14px;color:var(--text);
+  font-family:var(--font-mono);font-size:13px;outline:none;cursor:pointer;
 }
-
-.login-logo .apex-text {
-  font-size: 28px;
-  font-weight: 800;
-  letter-spacing: 6px;
-  color: var(--accent);
-  text-transform: uppercase;
+.auth-btn{
+  width:100%;padding:13px;background:var(--accent);color:#000;border:none;
+  border-radius:var(--radius);font-weight:800;font-size:13px;letter-spacing:3px;
+  text-transform:uppercase;cursor:pointer;transition:all .2s;margin-top:4px;
 }
+.auth-btn:hover{opacity:.9;transform:translateY(-1px)}
+.auth-error{margin-top:10px;font-family:var(--font-mono);font-size:11px;
+  color:var(--red);text-align:center;min-height:16px}
 
-.login-logo .sub {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--muted);
-  letter-spacing: 3px;
-  margin-top: 4px;
+/* ══ APP ════════════════════════════════════ */
+#app{display:none;position:relative;z-index:1;min-height:100vh;flex-direction:column}
+#app.visible{display:flex}
+
+/* ── Header ────────────────────────────────── */
+.header{
+  height:58px;border-bottom:1px solid var(--border);
+  padding:0 24px;display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;background:rgba(8,11,15,.95);backdrop-filter:blur(12px);z-index:100;
+  transition:background .3s;
 }
+[data-theme="white"] .header{background:rgba(244,246,249,.95)}
+.h-logo{display:flex;align-items:center;gap:10px}
+.h-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);
+  box-shadow:0 0 10px var(--accent);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.7);opacity:.4}}
+.h-brand{font-weight:800;font-size:15px;letter-spacing:4px;color:var(--accent)}
+.h-ver{font-family:var(--font-mono);font-size:8px;color:var(--muted);letter-spacing:1px}
+.h-stats{display:flex;gap:20px}
+.hs{text-align:center}
+.hs-v{font-family:var(--font-mono);font-size:15px;font-weight:700;line-height:1}
+.hs-l{font-size:8px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-top:2px}
+.hs.c .hs-v{color:var(--accent)}.hs.g .hs-v{color:var(--green)}.hs.r .hs-v{color:var(--red)}.hs.y .hs-v{color:var(--gold)}
+.h-right{display:flex;align-items:center;gap:12px}
+.scan-ind{display:flex;align-items:center;gap:7px;font-family:var(--font-mono);font-size:9px;color:var(--muted);letter-spacing:1px}
+.scan-dot{width:6px;height:6px;border-radius:50%;background:var(--muted);transition:all .3s}
+.scan-dot.on{background:var(--green);box-shadow:0 0 8px var(--green);animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.h-btn{background:transparent;border:1px solid var(--border);color:var(--muted);
+  padding:6px 12px;border-radius:var(--radius);font-family:var(--font-mono);
+  font-size:9px;letter-spacing:1px;cursor:pointer;transition:all .2s}
+.h-btn:hover{border-color:var(--accent);color:var(--accent)}
+.h-btn.danger:hover{border-color:var(--red);color:var(--red)}
 
-.login-label {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 2px;
-  color: var(--muted);
-  text-transform: uppercase;
-  margin-bottom: 8px;
-  display: block;
+/* ── Layout ─────────────────────────────────── */
+.layout{display:grid;grid-template-columns:280px 1fr;flex:1;min-height:0}
+
+/* ── Sidebar ─────────────────────────────────── */
+.sidebar{
+  border-right:1px solid var(--border);padding:20px 16px;
+  display:flex;flex-direction:column;gap:20px;
+  background:var(--bg2);overflow-y:auto;
 }
-
-.login-input {
-  width: 100%;
-  background: var(--bg3);
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  padding: 14px 16px;
-  color: var(--text);
-  font-family: var(--font-mono);
-  font-size: 14px;
-  outline: none;
-  transition: border-color 0.2s;
+.sec-title{
+  font-family:var(--font-mono);font-size:8px;letter-spacing:3px;
+  color:var(--muted);text-transform:uppercase;margin-bottom:10px;
+  display:flex;align-items:center;gap:8px;
 }
-
-.login-input:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent);
+.sec-title::after{content:'';flex:1;height:1px;background:var(--border)}
+.opt-label{font-family:var(--font-mono);font-size:8px;letter-spacing:2px;
+  color:var(--muted);text-transform:uppercase;display:block;margin-bottom:6px}
+.pills{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:14px}
+.pill{
+  padding:5px 11px;border:1px solid var(--border);border-radius:20px;
+  font-family:var(--font-mono);font-size:9px;color:var(--muted);
+  cursor:pointer;transition:all .15s;background:transparent;user-select:none;
 }
-
-.login-btn {
-  width: 100%;
-  margin-top: 20px;
-  padding: 14px;
-  background: var(--accent);
-  color: #000;
-  border: none;
-  border-radius: 2px;
-  font-family: var(--font-main);
-  font-weight: 700;
-  font-size: 13px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: all 0.2s;
+.pill:hover{border-color:var(--border2);color:var(--text)}
+.pill.sel{background:var(--accent);border-color:var(--accent);color:#000;font-weight:700}
+.pill.sel.r{background:var(--red);border-color:var(--red)}
+.pill.sel.y{background:var(--yellow);border-color:var(--yellow);color:#000}
+.pill.sel.g{background:var(--green);border-color:var(--green)}
+.sb-select{
+  width:100%;background:var(--bg3);border:1px solid var(--border);
+  border-radius:var(--radius);color:var(--text);font-family:var(--font-mono);
+  font-size:10px;padding:9px 11px;outline:none;cursor:pointer;
+  transition:border-color .2s;margin-bottom:14px;
 }
-
-.login-btn:hover { background: #00b8d9; transform: translateY(-1px); }
-.login-btn:active { transform: translateY(0); }
-
-.login-error {
-  margin-top: 12px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--red);
-  text-align: center;
-  display: none;
+.sb-select:focus{border-color:var(--accent)}
+.scan-btn{
+  width:100%;padding:14px;background:transparent;border:1px solid var(--accent);
+  color:var(--accent);border-radius:var(--radius);font-weight:800;font-size:11px;
+  letter-spacing:3px;text-transform:uppercase;cursor:pointer;transition:all .2s;
+  position:relative;overflow:hidden;
 }
-
-/* ── Main App ──────────────────────────────────────────── */
-#app { display: none; position: relative; z-index: 1; min-height: 100vh; }
-
-/* ── Header ────────────────────────────────────────────── */
-.header {
-  border-bottom: 1px solid var(--border);
-  padding: 0 32px;
-  height: 60px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  position: sticky; top: 0;
-  background: rgba(8,11,15,0.95);
-  backdrop-filter: blur(10px);
-  z-index: 50;
+.scan-btn::before{
+  content:'';position:absolute;inset:0;background:var(--accent);
+  transform:translateX(-101%);transition:transform .3s ease;z-index:0;
 }
-
-.header-logo {
-  display: flex; align-items: center; gap: 12px;
+.scan-btn:hover::before{transform:translateX(0)}.scan-btn:hover{color:#000}
+.scan-btn span{position:relative;z-index:1}
+.scan-btn:disabled{border-color:var(--muted);color:var(--muted);cursor:not-allowed}
+.scan-btn:disabled::before{display:none}
+.stop-btn{
+  width:100%;padding:11px;background:transparent;border:1px solid var(--red);
+  color:var(--red);border-radius:var(--radius);font-weight:700;font-size:11px;
+  letter-spacing:2px;cursor:pointer;transition:all .2s;display:none;margin-top:6px;
 }
-
-.logo-dot {
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 10px var(--accent);
-  animation: pulse 2s infinite;
+.stop-btn:hover{background:var(--red);color:#fff}
+.clear-btn{
+  width:100%;padding:9px;background:transparent;border:1px solid var(--border);
+  color:var(--muted);border-radius:var(--radius);font-family:var(--font-mono);
+  font-size:9px;letter-spacing:1px;cursor:pointer;transition:all .2s;margin-top:6px;
 }
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(0.8); }
-}
-
-.logo-text {
-  font-weight: 800;
-  font-size: 16px;
-  letter-spacing: 4px;
-  color: var(--accent);
-}
-
-.logo-ver {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  color: var(--muted);
-  letter-spacing: 1px;
-  margin-top: 2px;
-}
-
-.header-stats {
-  display: flex; gap: 24px; align-items: center;
-}
-
-.hstat {
-  text-align: center;
-}
-
-.hstat-val {
-  font-family: var(--font-mono);
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.hstat-lbl {
-  font-size: 9px;
-  letter-spacing: 1px;
-  color: var(--muted);
-  text-transform: uppercase;
-  margin-top: 2px;
-}
-
-.hstat.green .hstat-val { color: var(--green); }
-.hstat.red .hstat-val   { color: var(--red); }
-.hstat.cyan .hstat-val  { color: var(--accent); }
-.hstat.gold .hstat-val  { color: var(--gold); }
-
-.header-right {
-  display: flex; align-items: center; gap: 16px;
-}
-
-.scan-indicator {
-  display: flex; align-items: center; gap: 8px;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--muted);
-  letter-spacing: 1px;
-}
-
-.scan-dot {
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  background: var(--muted);
-  transition: all 0.3s;
-}
-
-.scan-dot.active {
-  background: var(--green);
-  box-shadow: 0 0 8px var(--green);
-  animation: blink 1s infinite;
-}
-
-@keyframes blink {
-  0%, 100% { opacity: 1; } 50% { opacity: 0.3; }
-}
-
-.btn-logout {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--muted);
-  padding: 6px 14px;
-  border-radius: 2px;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 1px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-logout:hover { border-color: var(--red); color: var(--red); }
-
-/* ── Layout ────────────────────────────────────────────── */
-.layout {
-  display: grid;
-  grid-template-columns: 300px 1fr;
-  min-height: calc(100vh - 60px);
-}
-
-/* ── Sidebar ───────────────────────────────────────────── */
-.sidebar {
-  border-right: 1px solid var(--border);
-  padding: 24px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  background: var(--bg2);
-}
-
-.section-title {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 3px;
-  color: var(--muted);
-  text-transform: uppercase;
-  margin-bottom: 12px;
-  display: flex; align-items: center; gap: 8px;
-}
-
-.section-title::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: var(--border);
-}
-
-/* Seçenek grupları */
-.option-group { margin-bottom: 20px; }
-
-.option-label {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 2px;
-  color: var(--muted);
-  text-transform: uppercase;
-  margin-bottom: 8px;
-  display: block;
-}
-
-.option-pills {
-  display: flex; flex-wrap: wrap; gap: 6px;
-}
-
-.pill {
-  padding: 6px 12px;
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--muted);
-  cursor: pointer;
-  transition: all 0.15s;
-  background: transparent;
-  user-select: none;
-}
-
-.pill:hover { border-color: var(--border2); color: var(--text); }
-
-.pill.selected {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #000;
-  font-weight: 700;
-}
-
-.pill.selected.red-pill {
-  background: var(--red);
-  border-color: var(--red);
-}
-.pill.selected.yellow-pill {
-  background: var(--yellow);
-  border-color: var(--yellow);
-}
-.pill.selected.green-pill {
-  background: var(--green);
-  border-color: var(--green);
-}
-
-/* Pair selector */
-.pair-select {
-  width: 100%;
-  background: var(--bg3);
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  color: var(--text);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  padding: 10px 12px;
-  outline: none;
-  cursor: pointer;
-  transition: border-color 0.2s;
-}
-
-.pair-select:focus { border-color: var(--accent); }
-
-/* Scan button */
-.scan-btn {
-  width: 100%;
-  padding: 16px;
-  background: transparent;
-  border: 1px solid var(--accent);
-  color: var(--accent);
-  border-radius: 2px;
-  font-family: var(--font-main);
-  font-weight: 700;
-  font-size: 12px;
-  letter-spacing: 3px;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: all 0.2s;
-  position: relative;
-  overflow: hidden;
-}
-
-.scan-btn::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: var(--accent);
-  transform: translateX(-100%);
-  transition: transform 0.3s ease;
-  z-index: 0;
-}
-
-.scan-btn:hover::before { transform: translateX(0); }
-.scan-btn:hover { color: #000; }
-.scan-btn span { position: relative; z-index: 1; }
-
-.scan-btn:disabled {
-  border-color: var(--muted);
-  color: var(--muted);
-  cursor: not-allowed;
-}
-.scan-btn:disabled::before { display: none; }
-
-.clear-btn {
-  width: 100%;
-  padding: 10px;
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--muted);
-  border-radius: 2px;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 2px;
-  cursor: pointer;
-  transition: all 0.2s;
-  margin-top: 8px;
-}
-
-.clear-btn:hover { border-color: var(--red); color: var(--red); }
+.clear-btn:hover{border-color:var(--red);color:var(--red)}
 
 /* Win rate gauge */
-.winrate-box {
-  background: var(--bg3);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 16px;
-  text-align: center;
+.wr-box{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:14px;text-align:center}
+.wr-num{font-family:var(--font-mono);font-size:28px;font-weight:700;color:var(--green);line-height:1}
+.wr-lbl{font-size:8px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-top:3px}
+.wr-bar{height:3px;background:var(--border);border-radius:2px;margin-top:10px;overflow:hidden}
+.wr-fill{height:100%;background:linear-gradient(90deg,var(--green),var(--accent));border-radius:2px;transition:width .6s}
+
+/* ── Main ─────────────────────────────────────── */
+.main{padding:20px 24px;overflow-y:auto;display:flex;flex-direction:column;gap:20px}
+
+/* Tabs */
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);padding-bottom:0}
+.tab{
+  padding:10px 20px;font-family:var(--font-mono);font-size:9px;letter-spacing:2px;
+  text-transform:uppercase;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;
+  transition:all .2s;margin-bottom:-1px;background:transparent;border-top:none;border-left:none;border-right:none;
 }
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
 
-.winrate-num {
-  font-family: var(--font-mono);
-  font-size: 32px;
-  font-weight: 700;
-  color: var(--green);
-  line-height: 1;
+/* Panel */
+.panel{display:none}.panel.active{display:block}
+
+/* Signals grid */
+.sig-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.sig-title{font-family:var(--font-mono);font-size:9px;letter-spacing:3px;color:var(--muted);text-transform:uppercase;display:flex;align-items:center;gap:8px}
+.badge{background:var(--accent);color:#000;font-size:8px;font-weight:700;padding:2px 7px;border-radius:10px}
+.last-upd{font-family:var(--font-mono);font-size:8px;color:var(--muted)}
+.sig-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+
+/* Empty */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:60px 20px;text-align:center;gap:12px}
+.empty-icon{font-size:40px;opacity:.25}
+.empty-t{font-family:var(--font-mono);font-size:10px;letter-spacing:2px;color:var(--muted);text-transform:uppercase}
+.empty-s{font-size:11px;color:var(--muted);opacity:.5}
+
+/* ── Signal Card ──────────────────────────────── */
+.sig-card{
+  background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);
+  padding:16px;position:relative;overflow:hidden;
+  animation:slideIn .35s ease;transition:border-color .2s,transform .2s,box-shadow .2s;
 }
+@keyframes slideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.sig-card:hover{border-color:var(--border2);transform:translateY(-2px);box-shadow:0 8px 24px var(--shadow)}
+.sig-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.sig-card.AL::before{background:linear-gradient(90deg,transparent,var(--green),transparent)}
+.sig-card.SAT::before{background:linear-gradient(90deg,transparent,var(--red),transparent)}
+.sig-card.win{border-color:rgba(0,230,118,.3)}
+.sig-card.loss{border-color:rgba(255,61,90,.3)}
 
-.winrate-lbl {
-  font-size: 9px;
-  letter-spacing: 2px;
-  color: var(--muted);
-  text-transform: uppercase;
-  margin-top: 4px;
+.card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
+.card-pair{font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--text)}
+.card-badge{font-family:var(--font-mono);font-size:7px;letter-spacing:1px;padding:2px 7px;border-radius:3px;margin-left:6px;text-transform:uppercase}
+.b-forex{background:rgba(0,212,255,.1);color:var(--accent);border:1px solid rgba(0,212,255,.2)}
+.b-crypto{background:rgba(255,179,0,.1);color:var(--gold);border:1px solid rgba(255,179,0,.2)}
+.card-time-more{display:flex;align-items:center;gap:8px}
+.card-time{font-family:var(--font-mono);font-size:9px;color:var(--muted)}
+.more-btn{background:transparent;border:1px solid var(--border);color:var(--muted);
+  width:24px;height:24px;border-radius:4px;cursor:pointer;font-size:12px;
+  display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0}
+.more-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+.card-dir{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.dir-badge{padding:5px 14px;border-radius:4px;font-weight:800;font-size:16px;letter-spacing:2px}
+.dir-AL{background:rgba(0,230,118,.1);color:var(--green);border:1px solid rgba(0,230,118,.25)}
+.dir-SAT{background:rgba(255,61,90,.1);color:var(--red);border:1px solid rgba(255,61,90,.25)}
+.card-exp{font-family:var(--font-mono);font-size:9px;color:var(--muted);
+  background:var(--bg3);padding:3px 9px;border-radius:3px;border:1px solid var(--border)}
+
+/* Countdown */
+.countdown{
+  font-family:var(--font-mono);font-size:11px;font-weight:700;
+  color:var(--accent);background:rgba(0,212,255,.08);
+  padding:3px 10px;border-radius:3px;border:1px solid rgba(0,212,255,.2);
+  display:inline-block;min-width:52px;text-align:center;
 }
+.countdown.ending{color:var(--red);background:rgba(255,61,90,.08);border-color:rgba(255,61,90,.2);animation:countdown-blink .5s infinite}
+@keyframes countdown-blink{0%,100%{opacity:1}50%{opacity:.3}}
 
-.winrate-bar {
-  height: 3px;
-  background: var(--border);
-  border-radius: 2px;
-  margin-top: 12px;
-  overflow: hidden;
+/* Conf bar */
+.conf-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.conf-lbl{font-family:var(--font-mono);font-size:8px;color:var(--muted);letter-spacing:1px;white-space:nowrap}
+.conf-bar{flex:1;height:3px;background:var(--border);border-radius:2px;overflow:hidden}
+.conf-fill{height:100%;border-radius:2px;transition:width .6s}
+.cf-h{background:linear-gradient(90deg,var(--green),#00ffa0)}
+.cf-m{background:linear-gradient(90deg,var(--yellow),#ffd740)}
+.cf-l{background:linear-gradient(90deg,var(--red),#ff6b6b)}
+.conf-pct{font-family:var(--font-mono);font-size:10px;font-weight:700;min-width:30px;text-align:right}
+
+/* Card stats */
+.card-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px}
+.cs{background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:7px;text-align:center}
+.cs-v{font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--text)}
+.cs-l{font-size:7px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-top:1px}
+
+/* Layer chips */
+.layers{display:flex;gap:3px;flex-wrap:wrap;margin-top:6px}
+.lchip{font-family:var(--font-mono);font-size:7px;padding:2px 5px;border-radius:3px;
+  background:var(--bg3);border:1px solid var(--border);color:var(--muted);letter-spacing:1px}
+.lchip.on{color:var(--accent);border-color:rgba(0,212,255,.25)}
+
+/* Result badge */
+.res-badge{
+  position:absolute;top:10px;right:10px;
+  padding:4px 10px;border-radius:4px;font-weight:800;font-size:11px;letter-spacing:1px;
+  display:none;
 }
+.res-badge.win{display:flex;background:rgba(0,230,118,.12);color:var(--green);border:1px solid rgba(0,230,118,.35)}
+.res-badge.loss{display:flex;background:rgba(255,61,90,.12);color:var(--red);border:1px solid rgba(255,61,90,.35)}
 
-.winrate-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--green), var(--accent));
-  border-radius: 2px;
-  transition: width 0.6s ease;
+/* ── Modal (Detay) ───────────────────────────── */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:300;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .2s;backdrop-filter:blur(4px);
 }
-
-/* ── Main Content ──────────────────────────────────────── */
-.main-content {
-  padding: 24px 28px;
-  overflow-y: auto;
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal{
+  background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);
+  padding:28px;width:460px;max-width:95vw;max-height:90vh;overflow-y:auto;
+  transform:scale(.95);transition:transform .2s;
 }
+.modal-overlay.open .modal{transform:scale(1)}
+.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.modal-title{font-size:16px;font-weight:800;letter-spacing:2px;color:var(--accent)}
+.modal-close{background:transparent;border:1px solid var(--border);color:var(--muted);
+  width:28px;height:28px;border-radius:4px;cursor:pointer;font-size:16px;
+  display:flex;align-items:center;justify-content:center;transition:all .2s}
+.modal-close:hover{border-color:var(--red);color:var(--red)}
+.modal-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px}
+.modal-row:last-child{border-bottom:none}
+.mr-l{color:var(--muted);font-family:var(--font-mono);font-size:10px;letter-spacing:1px}
+.mr-v{font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--text)}
+.ind-list{margin-top:12px}
+.ind-item{font-family:var(--font-mono);font-size:9px;color:var(--muted);padding:3px 0}
+.ind-item.pos{color:var(--green)}.ind-item.neu{color:var(--accent)}
 
-/* Signals header */
-.signals-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 20px;
+/* ── Stats Panel ─────────────────────────────── */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:20px}
+.stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;text-align:center}
+.stat-big{font-family:var(--font-mono);font-size:28px;font-weight:700;line-height:1}
+.stat-lbl{font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-top:4px}
+.chart-area{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
+.chart-title{font-family:var(--font-mono);font-size:9px;letter-spacing:3px;color:var(--muted);text-transform:uppercase;margin-bottom:14px}
+.chart-bars{display:flex;gap:4px;align-items:flex-end;height:80px}
+.chart-bar{flex:1;border-radius:3px 3px 0 0;min-height:6px;transition:height .4s ease;position:relative;cursor:pointer}
+.chart-bar.win-bar{background:var(--green);opacity:.7}
+.chart-bar.win-bar:hover{opacity:1}
+.chart-bar.loss-bar{background:var(--red);opacity:.7}
+.chart-bar.loss-bar:hover{opacity:1}
+.chart-bar .bar-tip{
+  position:absolute;bottom:calc(100% + 4px);left:50%;transform:translateX(-50%);
+  background:var(--bg3);border:1px solid var(--border2);border-radius:3px;
+  padding:3px 6px;font-family:var(--font-mono);font-size:8px;white-space:nowrap;
+  opacity:0;pointer-events:none;transition:opacity .15s;
 }
+.chart-bar:hover .bar-tip{opacity:1}
 
-.signals-title {
-  font-size: 11px;
-  letter-spacing: 3px;
-  color: var(--muted);
-  text-transform: uppercase;
-  font-family: var(--font-mono);
-  display: flex; align-items: center; gap: 10px;
+/* ── Settings Panel ──────────────────────────── */
+.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.setting-group{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px}
+.setting-title{font-family:var(--font-mono);font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:12px}
+.setting-row{margin-bottom:12px}
+.setting-label{font-size:11px;color:var(--muted);margin-bottom:6px;display:block}
+.theme-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.theme-btn{
+  padding:8px;border:2px solid var(--border);border-radius:4px;cursor:pointer;
+  font-family:var(--font-mono);font-size:9px;text-align:center;transition:all .2s;
+  background:transparent;color:var(--text);letter-spacing:1px;
 }
-
-.signal-count-badge {
-  background: var(--accent);
-  color: #000;
-  font-size: 9px;
-  font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 10px;
-  letter-spacing: 0;
+.theme-btn:hover{border-color:var(--accent)}
+.theme-btn.active{border-color:var(--accent);color:var(--accent)}
+.save-btn{
+  padding:11px 20px;background:var(--accent);color:#000;border:none;
+  border-radius:var(--radius);font-weight:700;font-size:11px;letter-spacing:2px;
+  cursor:pointer;transition:all .2s;width:100%;margin-top:4px;
 }
+.save-btn:hover{opacity:.9}
 
-/* Empty state */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 80px 20px;
-  text-align: center;
-  gap: 16px;
+/* ── Toast ────────────────────────────────────── */
+.toast{
+  position:fixed;bottom:20px;right:20px;
+  background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);
+  padding:12px 18px;font-family:var(--font-mono);font-size:11px;letter-spacing:1px;
+  z-index:500;transform:translateY(60px);opacity:0;transition:all .3s;
+  display:flex;align-items:center;gap:8px;max-width:300px;
 }
+.toast.show{transform:translateY(0);opacity:1}
+.toast.s{border-color:rgba(0,230,118,.4);color:var(--green)}
+.toast.e{border-color:rgba(255,61,90,.4);color:var(--red)}
+.toast.i{border-color:rgba(0,212,255,.4);color:var(--accent)}
 
-.empty-icon {
-  font-size: 48px;
-  opacity: 0.3;
-}
+/* Scrollbar */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
 
-.empty-title {
-  font-size: 14px;
-  letter-spacing: 2px;
-  color: var(--muted);
-  text-transform: uppercase;
-  font-family: var(--font-mono);
-}
-
-.empty-sub {
-  font-size: 12px;
-  color: var(--muted);
-  opacity: 0.6;
-}
-
-/* Signal cards grid */
-.signals-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 16px;
-}
-
-/* Signal Card */
-.signal-card {
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 20px;
-  position: relative;
-  overflow: hidden;
-  animation: slideIn 0.4s ease;
-  transition: border-color 0.2s, transform 0.2s;
-}
-
-@keyframes slideIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-.signal-card:hover { border-color: var(--border2); transform: translateY(-2px); }
-
-.signal-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 2px;
-}
-
-.signal-card.AL::before { background: linear-gradient(90deg, transparent, var(--green), transparent); }
-.signal-card.SAT::before { background: linear-gradient(90deg, transparent, var(--red), transparent); }
-.signal-card.win  { border-color: rgba(0,230,118,0.3); }
-.signal-card.loss { border-color: rgba(255,61,90,0.3); }
-
-/* Card header */
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 14px;
-}
-
-.card-pair {
-  font-family: var(--font-mono);
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text);
-  letter-spacing: 1px;
-}
-
-.card-type-badge {
-  font-family: var(--font-mono);
-  font-size: 8px;
-  letter-spacing: 1px;
-  padding: 3px 8px;
-  border-radius: 2px;
-  text-transform: uppercase;
-  margin-left: 8px;
-}
-
-.badge-forex  { background: rgba(0,212,255,0.1); color: var(--accent); border: 1px solid rgba(0,212,255,0.2); }
-.badge-crypto { background: rgba(255,179,0,0.1); color: var(--gold);   border: 1px solid rgba(255,179,0,0.2); }
-
-.card-time {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--muted);
-}
-
-/* Direction big display */
-.card-direction {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 14px;
-}
-
-.direction-badge {
-  padding: 6px 16px;
-  border-radius: 2px;
-  font-family: var(--font-main);
-  font-weight: 800;
-  font-size: 18px;
-  letter-spacing: 3px;
-}
-
-.dir-AL  { background: rgba(0,230,118,0.12); color: var(--green); border: 1px solid rgba(0,230,118,0.3); }
-.dir-SAT { background: rgba(255,61,90,0.12);  color: var(--red);   border: 1px solid rgba(255,61,90,0.3); }
-
-.card-expiry {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--muted);
-  background: var(--bg3);
-  padding: 4px 10px;
-  border-radius: 2px;
-  border: 1px solid var(--border);
-}
-
-/* Confidence bar */
-.conf-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-.conf-label {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  color: var(--muted);
-  letter-spacing: 1px;
-  white-space: nowrap;
-}
-
-.conf-bar {
-  flex: 1;
-  height: 3px;
-  background: var(--border);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.conf-fill {
-  height: 100%;
-  border-radius: 2px;
-  transition: width 0.6s ease;
-}
-
-.conf-fill.high   { background: linear-gradient(90deg, var(--green), #00ffa0); }
-.conf-fill.medium { background: linear-gradient(90deg, var(--yellow), #ffd740); }
-.conf-fill.low    { background: linear-gradient(90deg, var(--red), #ff6b6b); }
-
-.conf-pct {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 700;
-  min-width: 32px;
-  text-align: right;
-}
-
-/* Card stats row */
-.card-stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.cstat {
-  background: var(--bg3);
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  padding: 8px;
-  text-align: center;
-}
-
-.cstat-val {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--text);
-}
-
-.cstat-lbl {
-  font-size: 8px;
-  letter-spacing: 1px;
-  color: var(--muted);
-  text-transform: uppercase;
-  margin-top: 2px;
-}
-
-/* Indicators */
-.indicators {
-  margin-top: 10px;
-  border-top: 1px solid var(--border);
-  padding-top: 10px;
-}
-
-.ind-item {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  color: var(--muted);
-  padding: 2px 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ind-item.has-check { color: rgba(0,230,118,0.8); }
-.ind-item.has-fire  { color: var(--accent); }
-
-/* Result overlay */
-.result-overlay {
-  display: none;
-  position: absolute;
-  top: 10px; right: 10px;
-  padding: 6px 14px;
-  border-radius: 2px;
-  font-family: var(--font-main);
-  font-weight: 800;
-  font-size: 13px;
-  letter-spacing: 2px;
-}
-
-.result-overlay.win  { display: flex; background: rgba(0,230,118,0.15); color: var(--green); border: 1px solid rgba(0,230,118,0.4); }
-.result-overlay.loss { display: flex; background: rgba(255,61,90,0.15);  color: var(--red);   border: 1px solid rgba(255,61,90,0.4); }
-
-/* Layer scores mini */
-.layer-row {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-  margin-top: 8px;
-}
-
-.layer-chip {
-  font-family: var(--font-mono);
-  font-size: 8px;
-  padding: 2px 6px;
-  border-radius: 2px;
-  background: var(--bg3);
-  border: 1px solid var(--border);
-  color: var(--muted);
-  letter-spacing: 1px;
-}
-
-.layer-chip.active { color: var(--accent); border-color: rgba(0,212,255,0.3); }
-
-/* ── Toast ─────────────────────────────────────────────── */
-.toast {
-  position: fixed;
-  bottom: 24px; right: 24px;
-  background: var(--bg2);
-  border: 1px solid var(--border2);
-  border-radius: 4px;
-  padding: 14px 20px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 1px;
-  z-index: 1000;
-  transform: translateY(80px);
-  opacity: 0;
-  transition: all 0.3s;
-  display: flex; align-items: center; gap: 10px;
-}
-
-.toast.show { transform: translateY(0); opacity: 1; }
-.toast.success { border-color: rgba(0,230,118,0.4); color: var(--green); }
-.toast.error   { border-color: rgba(255,61,90,0.4);  color: var(--red); }
-.toast.info    { border-color: rgba(0,212,255,0.4);   color: var(--accent); }
-
-/* ── Scrollbar ─────────────────────────────────────────── */
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { background: var(--bg); }
-::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
-::-webkit-scrollbar-thumb:hover { background: var(--muted); }
-
-/* ── Responsive ────────────────────────────────────────── */
-@media (max-width: 768px) {
-  .layout { grid-template-columns: 1fr; }
-  .sidebar { border-right: none; border-bottom: 1px solid var(--border); }
-  .header-stats { display: none; }
-  .signals-grid { grid-template-columns: 1fr; }
+@media(max-width:768px){
+  .layout{grid-template-columns:1fr}
+  .sidebar{border-right:none;border-bottom:1px solid var(--border)}
+  .h-stats{display:none}
+  .settings-grid{grid-template-columns:1fr}
 }
 </style>
 </head>
 <body>
 
-<!-- ── LOGIN ─────────────────────────────────────────── -->
-<div id="login-screen">
-  <div class="login-card">
-    <div class="login-logo">
-      <div class="apex-text">APEX</div>
-      <div class="sub">SIGNAL ENGINE v2.0</div>
+<!-- ══ AUTH ════════════════════════════════════ -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="brand">APEX</div>
+      <div class="sub">SIGNAL ENGINE v3.0</div>
     </div>
-    <label class="login-label">Erişim Şifresi</label>
-    <input type="password" class="login-input" id="pw-input"
-           placeholder="şifrenizi girin" autocomplete="off"
-           onkeydown="if(event.key==='Enter') doLogin()">
-    <button class="login-btn" onclick="doLogin()">GİRİŞ YAP</button>
-    <div class="login-error" id="login-error">⚠ Yanlış şifre</div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchTab('login')">GİRİŞ</button>
+      <button class="auth-tab" onclick="switchTab('register')">KAYIT</button>
+    </div>
+
+    <!-- Login -->
+    <div id="tab-login">
+      <div class="form-group">
+        <label class="form-label">E-Posta</label>
+        <input type="email" class="form-input" id="l-email" placeholder="ornek@mail.com" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Şifre</label>
+        <input type="password" class="form-input" id="l-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <button class="auth-btn" onclick="doLogin()">GİRİŞ YAP</button>
+      <div class="auth-error" id="l-err"></div>
+    </div>
+
+    <!-- Register -->
+    <div id="tab-register" style="display:none">
+      <div class="form-group">
+        <label class="form-label">Ad Soyad</label>
+        <input type="text" class="form-input" id="r-name" placeholder="Adınız">
+      </div>
+      <div class="form-group">
+        <label class="form-label">E-Posta</label>
+        <input type="email" class="form-input" id="r-email" placeholder="ornek@mail.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Şifre</label>
+        <input type="password" class="form-input" id="r-pass" placeholder="Min. 6 karakter">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Dil / Language</label>
+        <select class="form-select" id="r-lang">
+          <option value="tr">🇹🇷 Türkçe</option>
+          <option value="en">🇬🇧 English</option>
+          <option value="de">🇩🇪 Deutsch</option>
+          <option value="ar">🇸🇦 العربية</option>
+        </select>
+      </div>
+      <button class="auth-btn" onclick="doRegister()">KAYIT OL</button>
+      <div class="auth-error" id="r-err"></div>
+    </div>
   </div>
 </div>
 
-<!-- ── MAIN APP ───────────────────────────────────────── -->
+<!-- ══ APP ══════════════════════════════════════ -->
 <div id="app">
-
   <!-- Header -->
   <header class="header">
-    <div class="header-logo">
-      <div class="logo-dot"></div>
+    <div class="h-logo">
+      <div class="h-dot"></div>
       <div>
-        <div class="logo-text">APEX</div>
-        <div class="logo-ver">SIGNAL ENGINE v2.0</div>
+        <div class="h-brand">APEX</div>
+        <div class="h-ver">SIGNAL ENGINE v3.0</div>
       </div>
     </div>
-
-    <div class="header-stats">
-      <div class="hstat cyan">
-        <div class="hstat-val" id="stat-total">0</div>
-        <div class="hstat-lbl">Toplam</div>
-      </div>
-      <div class="hstat green">
-        <div class="hstat-val" id="stat-wins">0</div>
-        <div class="hstat-lbl">WIN</div>
-      </div>
-      <div class="hstat red">
-        <div class="hstat-val" id="stat-losses">0</div>
-        <div class="hstat-lbl">LOSS</div>
-      </div>
-      <div class="hstat gold">
-        <div class="hstat-val" id="stat-wr">—</div>
-        <div class="hstat-lbl">Win Rate</div>
-      </div>
+    <div class="h-stats">
+      <div class="hs c"><div class="hs-v" id="h-total">0</div><div class="hs-l" data-i18n="total">Toplam</div></div>
+      <div class="hs g"><div class="hs-v" id="h-wins">0</div><div class="hs-l">WIN</div></div>
+      <div class="hs r"><div class="hs-v" id="h-losses">0</div><div class="hs-l">LOSS</div></div>
+      <div class="hs y"><div class="hs-v" id="h-wr">—</div><div class="hs-l">Win Rate</div></div>
     </div>
-
-    <div class="header-right">
-      <div class="scan-indicator">
-        <div class="scan-dot" id="scan-dot"></div>
-        <span id="scan-label">HAZIR</span>
-      </div>
-      <button class="btn-logout" onclick="doLogout()">ÇIKIŞ</button>
+    <div class="h-right">
+      <div class="scan-ind"><div class="scan-dot" id="sdot"></div><span id="slabel">HAZIR</span></div>
+      <button class="h-btn" onclick="openSettings()" data-i18n="settings">⚙ Ayarlar</button>
+      <button class="h-btn danger" onclick="doLogout()" data-i18n="logout">Çıkış</button>
     </div>
   </header>
 
-  <!-- Layout -->
   <div class="layout">
-
     <!-- Sidebar -->
     <aside class="sidebar">
-
       <div>
-        <div class="section-title">Piyasa</div>
-        <div class="option-group">
-          <span class="option-label">Tür</span>
-          <div class="option-pills" id="pills-type">
-            <div class="pill selected" data-group="type" data-val="all">Tümü</div>
-            <div class="pill" data-group="type" data-val="forex">Forex</div>
-            <div class="pill" data-group="type" data-val="crypto">Kripto</div>
-          </div>
+        <div class="sec-title" data-i18n="market">Piyasa</div>
+        <span class="opt-label" data-i18n="type">Tür</span>
+        <div class="pills" id="p-type">
+          <div class="pill sel" data-g="type" data-v="all" data-i18n="all">Tümü</div>
+          <div class="pill" data-g="type" data-v="forex">Forex</div>
+          <div class="pill" data-g="type" data-v="crypto">Kripto</div>
         </div>
-
-        <div class="option-group" id="pair-group">
-          <span class="option-label">Parite (opsiyonel)</span>
-          <select class="pair-select" id="pair-select">
-            <option value="">— Tümü —</option>
-            <optgroup label="FOREX" id="forex-opts"></optgroup>
-            <optgroup label="KRİPTO" id="crypto-opts"></optgroup>
-          </select>
+        <span class="opt-label" data-i18n="pair">Parite</span>
+        <select class="sb-select" id="pair-sel">
+          <option value="">— Tümü —</option>
+          <optgroup label="FOREX" id="fo"></optgroup>
+          <optgroup label="KRİPTO" id="co"></optgroup>
+        </select>
+      </div>
+      <div>
+        <div class="sec-title" data-i18n="timeframe">Zaman</div>
+        <div class="pills" id="p-tf">
+          <div class="pill sel" data-g="tf" data-v="all" data-i18n="all">Tümü</div>
+          <div class="pill" data-g="tf" data-v="5m">5dk</div>
+          <div class="pill" data-g="tf" data-v="15m">15dk</div>
+          <div class="pill" data-g="tf" data-v="30m">30dk</div>
+          <div class="pill" data-g="tf" data-v="45m">45dk</div>
+          <div class="pill" data-g="tf" data-v="1h">1s</div>
         </div>
       </div>
-
       <div>
-        <div class="section-title">Zaman Dilimi</div>
-        <div class="option-pills" id="pills-tf">
-          <div class="pill selected" data-group="tf" data-val="all">Tümü</div>
-          <div class="pill" data-group="tf" data-val="5m">5 dk</div>
-          <div class="pill" data-group="tf" data-val="15m">15 dk</div>
-          <div class="pill" data-group="tf" data-val="30m">30 dk</div>
-          <div class="pill" data-group="tf" data-val="45m">45 dk</div>
-          <div class="pill" data-group="tf" data-val="1h">1 saat</div>
+        <div class="sec-title" data-i18n="risk">Risk</div>
+        <div class="pills" id="p-risk">
+          <div class="pill sel r" data-g="risk" data-v="high" data-i18n="high">🔴 Yüksek</div>
+          <div class="pill y" data-g="risk" data-v="mid" data-i18n="mid">🟡 Orta</div>
+          <div class="pill g" data-g="risk" data-v="low" data-i18n="low">🟢 Düşük</div>
+        </div>
+        <div style="font-family:var(--font-mono);font-size:8px;color:var(--muted);line-height:1.8">
+          🔴 ≥4/12 &nbsp;🟡 ≥6/12 &nbsp;🟢 ≥8/12
         </div>
       </div>
-
       <div>
-        <div class="section-title">Risk Seviyesi</div>
-        <div class="option-pills" id="pills-risk">
-          <div class="pill red-pill selected" data-group="risk" data-val="high">🔴 Yüksek</div>
-          <div class="pill yellow-pill" data-group="risk" data-val="mid">🟡 Orta</div>
-          <div class="pill green-pill" data-group="risk" data-val="low">🟢 Düşük</div>
-        </div>
-        <div style="margin-top:8px; font-family:var(--font-mono); font-size:9px; color:var(--muted); line-height:1.6;">
-          🔴 Min skor ≥ 4/12<br>
-          🟡 Min skor ≥ 6/12<br>
-          🟢 Min skor ≥ 8/12
-        </div>
+        <button class="scan-btn" id="scan-btn" onclick="startScan()"><span id="scan-txt" data-i18n="scan">⚡ TARA</span></button>
+        <button class="stop-btn" id="stop-btn" onclick="stopScan()" data-i18n="stop">⏹ DURDUR</button>
+        <button class="clear-btn" onclick="clearSigs()" data-i18n="clear">🗑 Temizle</button>
       </div>
-
       <div>
-        <button class="scan-btn" id="scan-btn" onclick="startScan()">
-          <span id="scan-btn-text">⚡ TARA</span>
-        </button>
-        <button class="scan-btn" id="stop-btn" onclick="stopScan()"
-                style="margin-top:8px;border-color:var(--red);color:var(--red);display:none">
-          <span>⏹ DURDUR</span>
-        </button>
-        <button class="clear-btn" onclick="clearSignals()">🗑 SİNYALLERİ TEMİZLE</button>
-      </div>
-
-      <div>
-        <div class="section-title">İstatistik</div>
-        <div class="winrate-box">
-          <div class="winrate-num" id="wr-big">—</div>
-          <div class="winrate-lbl">Win Rate</div>
-          <div class="winrate-bar">
-            <div class="winrate-fill" id="wr-bar" style="width:0%"></div>
-          </div>
+        <div class="sec-title" data-i18n="stats">İstatistik</div>
+        <div class="wr-box">
+          <div class="wr-num" id="wr-big">—</div>
+          <div class="wr-lbl">Win Rate</div>
+          <div class="wr-bar"><div class="wr-fill" id="wr-fill" style="width:0%"></div></div>
         </div>
       </div>
-
     </aside>
 
-    <!-- Main Content -->
-    <main class="main-content">
-      <div class="signals-header">
-        <div class="signals-title">
-          Sinyaller
-          <span class="signal-count-badge" id="sig-badge">0</span>
-        </div>
-        <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);letter-spacing:1px;"
-             id="last-update">—</div>
+    <!-- Main -->
+    <main class="main">
+      <div class="tabs">
+        <button class="tab active" onclick="switchPanel('signals')" data-i18n="signals">📡 Sinyaller</button>
+        <button class="tab" onclick="switchPanel('stats')" data-i18n="statistics">📊 İstatistik</button>
       </div>
 
-      <div id="signal-container">
-        <div class="empty-state">
-          <div class="empty-icon">📡</div>
-          <div class="empty-title">Sinyal Bekleniyor</div>
-          <div class="empty-sub">Tarama başlatmak için sol paneli kullanın</div>
+      <!-- Signals Panel -->
+      <div class="panel active" id="panel-signals">
+        <div class="sig-header">
+          <div class="sig-title" data-i18n="signals">Sinyaller <span class="badge" id="sig-cnt">0</span></div>
+          <div class="last-upd" id="last-upd">—</div>
+        </div>
+        <div id="sig-container">
+          <div class="empty">
+            <div class="empty-icon">📡</div>
+            <div class="empty-t" data-i18n="waiting">Sinyal Bekleniyor</div>
+            <div class="empty-s" data-i18n="start_hint">Taramayı başlatın</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats Panel -->
+      <div class="panel" id="panel-stats">
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-big" id="st-total" style="color:var(--accent)">0</div><div class="stat-lbl" data-i18n="total">Toplam</div></div>
+          <div class="stat-card"><div class="stat-big" id="st-wins" style="color:var(--green)">0</div><div class="stat-lbl">WIN</div></div>
+          <div class="stat-card"><div class="stat-big" id="st-losses" style="color:var(--red)">0</div><div class="stat-lbl">LOSS</div></div>
+          <div class="stat-card"><div class="stat-big" id="st-wr" style="color:var(--gold)">—</div><div class="stat-lbl">Win Rate</div></div>
+        </div>
+        <div class="chart-area">
+          <div class="chart-title" data-i18n="chart">Son 20 Sinyal — Kar/Zarar</div>
+          <div class="chart-bars" id="chart-bars">
+            <div class="empty-t" style="font-size:9px" data-i18n="no_data">Henüz veri yok</div>
+          </div>
         </div>
       </div>
     </main>
-
   </div>
 </div>
 
-<!-- Toast -->
+<!-- Detay Modal -->
+<div class="modal-overlay" id="detail-modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="modal-title">—</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal-overlay" id="settings-modal" onclick="if(event.target===this)closeSettings()">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" data-i18n="settings">⚙ Ayarlar</div>
+      <button class="modal-close" onclick="closeSettings()">✕</button>
+    </div>
+    <div class="settings-grid">
+      <div class="setting-group">
+        <div class="setting-title" data-i18n="language">Dil</div>
+        <div class="setting-row">
+          <select class="form-select" id="set-lang" onchange="previewLang(this.value)">
+            <option value="tr">🇹🇷 Türkçe</option>
+            <option value="en">🇬🇧 English</option>
+            <option value="de">🇩🇪 Deutsch</option>
+            <option value="ar">🇸🇦 العربية</option>
+          </select>
+        </div>
+        <div class="setting-title" data-i18n="theme">Tema</div>
+        <div class="theme-grid">
+          <button class="theme-btn" data-theme="dark" onclick="setTheme('dark')">🌑 Dark</button>
+          <button class="theme-btn" data-theme="white" onclick="setTheme('white')">☀️ Light</button>
+          <button class="theme-btn" data-theme="midnight" onclick="setTheme('midnight')">🌌 Midnight</button>
+          <button class="theme-btn" data-theme="matrix" onclick="setTheme('matrix')">💚 Matrix</button>
+          <button class="theme-btn" data-theme="sunset" onclick="setTheme('sunset')">🌸 Sunset</button>
+        </div>
+      </div>
+      <div class="setting-group">
+        <div class="setting-title" data-i18n="sound">Ses</div>
+        <div class="setting-row" style="display:flex;align-items:center;justify-content:space-between">
+          <span class="setting-label" data-i18n="signal_sound">Sinyal Sesi</span>
+          <label style="cursor:pointer;display:flex;align-items:center;gap:6px">
+            <input type="checkbox" id="sound-toggle" checked style="width:16px;height:16px;accent-color:var(--accent)">
+          </label>
+        </div>
+        <div class="setting-title" data-i18n="account">Hesap</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted)" id="set-user-info">—</div>
+        <button class="save-btn" onclick="saveSettings()" data-i18n="save">💾 Kaydet</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
-<script>
-// ── State ────────────────────────────────────────────────
-let pollTimer   = null;
-let lastSigIds  = new Set();
-let scanRunning = false;
+<!-- Ses -->
+<audio id="beep-al" preload="auto">
+  <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBuZ2pzmaa0sp9+d3d+kK2/u6qOgnpze4ud..." type="audio/wav">
+</audio>
 
-// ── Login / Logout ───────────────────────────────────────
-async function doLogin() {
-  const pw  = document.getElementById('pw-input').value;
-  const err = document.getElementById('login-error');
-  try {
-    const r = await fetch('/api/login', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({password: pw}),
-    });
-    const d = await r.json();
-    if (d.ok) {
-      document.getElementById('login-screen').style.display = 'none';
-      document.getElementById('app').style.display = 'block';
-      startPolling();
-      loadPairs();
-    } else {
-      err.style.display = 'block';
-      document.getElementById('pw-input').value = '';
+<script>
+// ══ I18N ═══════════════════════════════════════
+const LANGS = {
+  tr:{total:"Toplam",settings:"⚙ Ayarlar",logout:"Çıkış",market:"Piyasa",type:"Tür",
+      all:"Tümü",pair:"Parite",timeframe:"Zaman",risk:"Risk",high:"🔴 Yüksek",
+      mid:"🟡 Orta",low:"🟢 Düşük",scan:"⚡ TARA",stop:"⏹ DURDUR",clear:"🗑 Temizle",
+      stats:"İstatistik",signals:"Sinyaller",statistics:"📊 İstatistik",
+      waiting:"Sinyal Bekleniyor",start_hint:"Taramayı başlatın",
+      chart:"Son 20 Sinyal — Kar/Zarar",no_data:"Henüz veri yok",
+      language:"Dil",theme:"Tema",sound:"Ses",signal_sound:"Sinyal Sesi",
+      account:"Hesap",save:"💾 Kaydet",direction:"Yön",entry:"Giriş",exit:"Çıkış",
+      score:"Skor",adx:"ADX",pair_lbl:"Parite",time_lbl:"Saat",tf_lbl:"Vade",
+      indicators:"İndikatörler",layers:"Katmanlar",pnl:"Kar/Zarar",
+      scan_started:"⚡ Sürekli tarama başlatıldı",scan_stopped:"⏹ Tarama durduruldu",
+      cleared:"🗑 Temizlendi",conn_err:"⚠ Bağlantı hatası",saved:"✅ Kaydedildi"},
+  en:{total:"Total",settings:"⚙ Settings",logout:"Logout",market:"Market",type:"Type",
+      all:"All",pair:"Pair",timeframe:"Timeframe",risk:"Risk",high:"🔴 High",
+      mid:"🟡 Medium",low:"🟢 Low",scan:"⚡ SCAN",stop:"⏹ STOP",clear:"🗑 Clear",
+      stats:"Stats",signals:"Signals",statistics:"📊 Statistics",
+      waiting:"Waiting for Signals",start_hint:"Start scanning",
+      chart:"Last 20 Signals — P&L",no_data:"No data yet",
+      language:"Language",theme:"Theme",sound:"Sound",signal_sound:"Signal Sound",
+      account:"Account",save:"💾 Save",direction:"Direction",entry:"Entry",exit:"Exit",
+      score:"Score",adx:"ADX",pair_lbl:"Pair",time_lbl:"Time",tf_lbl:"Expiry",
+      indicators:"Indicators",layers:"Layers",pnl:"P&L",
+      scan_started:"⚡ Continuous scan started",scan_stopped:"⏹ Scan stopped",
+      cleared:"🗑 Cleared",conn_err:"⚠ Connection error",saved:"✅ Saved"},
+  de:{total:"Gesamt",settings:"⚙ Einstellungen",logout:"Abmelden",market:"Markt",type:"Typ",
+      all:"Alle",pair:"Paar",timeframe:"Zeitrahmen",risk:"Risiko",high:"🔴 Hoch",
+      mid:"🟡 Mittel",low:"🟢 Niedrig",scan:"⚡ SCANNEN",stop:"⏹ STOPPEN",clear:"🗑 Löschen",
+      stats:"Statistik",signals:"Signale",statistics:"📊 Statistik",
+      waiting:"Warte auf Signale",start_hint:"Scan starten",
+      chart:"Letzte 20 Signale",no_data:"Noch keine Daten",
+      language:"Sprache",theme:"Design",sound:"Ton",signal_sound:"Signalton",
+      account:"Konto",save:"💾 Speichern",direction:"Richtung",entry:"Einstieg",exit:"Ausstieg",
+      score:"Punkte",adx:"ADX",pair_lbl:"Paar",time_lbl:"Zeit",tf_lbl:"Ablauf",
+      indicators:"Indikatoren",layers:"Ebenen",pnl:"G&V",
+      scan_started:"⚡ Dauerscan gestartet",scan_stopped:"⏹ Scan gestoppt",
+      cleared:"🗑 Gelöscht",conn_err:"⚠ Verbindungsfehler",saved:"✅ Gespeichert"},
+  ar:{total:"الإجمالي",settings:"⚙ الإعدادات",logout:"خروج",market:"السوق",type:"النوع",
+      all:"الكل",pair:"الزوج",timeframe:"الإطار",risk:"المخاطرة",high:"🔴 عالي",
+      mid:"🟡 متوسط",low:"🟢 منخفض",scan:"⚡ مسح",stop:"⏹ إيقاف",clear:"🗑 مسح",
+      stats:"إحصائيات",signals:"إشارات",statistics:"📊 إحصائيات",
+      waiting:"انتظار الإشارات",start_hint:"ابدأ المسح",
+      chart:"آخر 20 إشارة",no_data:"لا توجد بيانات",
+      language:"اللغة",theme:"المظهر",sound:"الصوت",signal_sound:"صوت الإشارة",
+      account:"الحساب",save:"💾 حفظ",direction:"الاتجاه",entry:"الدخول",exit:"الخروج",
+      score:"النتيجة",adx:"ADX",pair_lbl:"الزوج",time_lbl:"الوقت",tf_lbl:"الانتهاء",
+      indicators:"المؤشرات",layers:"الطبقات",pnl:"الربح/الخسارة",
+      scan_started:"⚡ بدأ المسح المستمر",scan_stopped:"⏹ توقف المسح",
+      cleared:"🗑 تم المسح",conn_err:"⚠ خطأ في الاتصال",saved:"✅ تم الحفظ"},
+};
+
+let currentLang  = 'tr';
+let currentTheme = 'dark';
+let soundEnabled = true;
+let userName     = '';
+
+function t(key){ return (LANGS[currentLang]||LANGS.tr)[key]||key }
+
+function applyLang(lang){
+  currentLang = lang;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const k=el.getAttribute('data-i18n');
+    if(el.tagName==='INPUT'||el.tagName==='BUTTON'||el.tagName==='SPAN'||el.tagName==='DIV'||el.tagName==='LABEL'){
+      // Don't overwrite if has children
+      if(!el.children.length) el.textContent=t(k);
     }
-  } catch(e) {
-    err.style.display = 'block';
-  }
+  });
+  document.documentElement.lang = lang;
+  document.documentElement.dir  = lang==='ar'?'rtl':'ltr';
 }
 
-async function doLogout() {
-  await fetch('/api/logout', {method:'POST'});
+function previewLang(lang){ applyLang(lang) }
+
+// ══ THEME ═══════════════════════════════════════
+function setTheme(theme){
+  currentTheme = theme;
+  document.documentElement.setAttribute('data-theme',theme);
+  document.querySelectorAll('.theme-btn').forEach(b=>{
+    b.classList.toggle('active',b.dataset.theme===theme);
+  });
+}
+
+// ══ SOUND ═══════════════════════════════════════
+function playBeep(type){
+  if(!soundEnabled) return;
+  try{
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    const o   = ctx.createOscillator();
+    const g   = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.type      = 'sine';
+    o.frequency.value = type==='AL' ? 880 : 440;
+    g.gain.setValueAtTime(.3, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001, ctx.currentTime+.4);
+    o.start(ctx.currentTime);
+    o.stop(ctx.currentTime+.4);
+  }catch(e){}
+}
+
+// ══ AUTH ════════════════════════════════════════
+function switchTab(tab){
+  document.querySelectorAll('.auth-tab').forEach((b,i)=>b.classList.toggle('active',i===(tab==='login'?0:1)));
+  document.getElementById('tab-login').style.display    = tab==='login'?'':'none';
+  document.getElementById('tab-register').style.display = tab==='register'?'':'none';
+}
+
+async function doLogin(){
+  const email=document.getElementById('l-email').value.trim();
+  const pw=document.getElementById('l-pass').value;
+  const err=document.getElementById('l-err');
+  err.textContent='';
+  try{
+    const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pw})});
+    const d=await r.json();
+    if(d.ok){ applySession(d); showApp(); }
+    else err.textContent=d.error||'Hata';
+  }catch(e){err.textContent=t('conn_err')}
+}
+
+async function doRegister(){
+  const name=document.getElementById('r-name').value.trim();
+  const email=document.getElementById('r-email').value.trim();
+  const pw=document.getElementById('r-pass').value;
+  const lang=document.getElementById('r-lang').value;
+  const err=document.getElementById('r-err');
+  err.textContent='';
+  if(pw.length<6){err.textContent='Şifre en az 6 karakter olmalı';return}
+  try{
+    const r=await fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,email,password:pw,lang})});
+    const d=await r.json();
+    if(d.ok){ applySession(d); showApp(); }
+    else err.textContent=d.error||'Hata';
+  }catch(e){err.textContent=t('conn_err')}
+}
+
+function applySession(d){
+  userName=d.name||''; currentLang=d.lang||'tr'; currentTheme=d.theme||'dark';
+  applyLang(currentLang); setTheme(currentTheme);
+}
+
+async function doLogout(){
+  await fetch('/api/logout',{method:'POST'});
   location.reload();
 }
 
-// ── Pair listesi yükle ────────────────────────────────────
-async function loadPairs() {
-  const r = await fetch('/api/pairs');
-  const d = await r.json();
-  const fo = document.getElementById('forex-opts');
-  const co = document.getElementById('crypto-opts');
-  d.forex.forEach(p => { const o = document.createElement('option'); o.value=p; o.text=p; fo.appendChild(o); });
-  d.crypto.forEach(p => { const o = document.createElement('option'); o.value=p; o.text=p; co.appendChild(o); });
+function showApp(){
+  document.getElementById('auth-screen').style.display='none';
+  document.getElementById('app').classList.add('visible');
+  loadPairs(); startPoll();
 }
 
-// ── Pill seçimi ───────────────────────────────────────────
-document.querySelectorAll('.pill').forEach(pill => {
-  pill.addEventListener('click', () => {
-    const group = pill.dataset.group;
-    document.querySelectorAll(`.pill[data-group="${group}"]`).forEach(p => {
-      p.classList.remove('selected');
-    });
-    pill.classList.add('selected');
+// ══ SESSION CHECK ════════════════════════════════
+async function checkSession(){
+  try{
+    const r=await fetch('/api/me');
+    const d=await r.json();
+    if(d.auth){ applySession(d); showApp(); }
+  }catch(e){}
+}
+
+// ══ PAIRS ════════════════════════════════════════
+async function loadPairs(){
+  const r=await fetch('/api/pairs');
+  const d=await r.json();
+  const fo=document.getElementById('fo'),co=document.getElementById('co');
+  d.forex.forEach(p=>{const o=document.createElement('option');o.value=p;o.text=p;fo.appendChild(o)});
+  d.crypto.forEach(p=>{const o=document.createElement('option');o.value=p;o.text=p;co.appendChild(o)});
+}
+
+// ══ PILL SELECTION ════════════════════════════════
+document.querySelectorAll('.pill').forEach(p=>{
+  p.addEventListener('click',()=>{
+    const g=p.dataset.g;
+    document.querySelectorAll(`.pill[data-g="${g}"]`).forEach(x=>x.classList.remove('sel'));
+    p.classList.add('sel');
   });
 });
+function selVal(g){ return document.querySelector(`.pill[data-g="${g}"].sel`)?.dataset.v||'all' }
 
-function getSelected(group) {
-  return document.querySelector(`.pill[data-group="${group}"].selected`)?.dataset.val || 'all';
-}
+// ══ SCAN ══════════════════════════════════════════
+let scanActive=false;
 
-// ── Tarama ───────────────────────────────────────────────
-let scanActive = false;
-
-async function startScan() {
-  const btn  = document.getElementById('scan-btn');
-  const stop = document.getElementById('stop-btn');
-  const text = document.getElementById('scan-btn-text');
-
-  const payload = {
-    pairs:     getSelected('type'),
-    timeframe: getSelected('tf'),
-    risk:      getSelected('risk'),
-    pair_name: document.getElementById('pair-select').value || null,
-  };
-
-  try {
-    const r = await fetch('/api/scan', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(payload),
-    });
-    const d = await r.json();
-    if (d.ok) {
-      scanActive = true;
-      btn.style.display  = 'none';
-      stop.style.display = 'block';
-      setScanStatus(true);
-      showToast('info', '⚡ Sürekli tarama başlatıldı');
+async function startScan(){
+  const payload={pairs:selVal('type'),timeframe:selVal('tf'),risk:selVal('risk'),pair_name:document.getElementById('pair-sel').value||null};
+  try{
+    const r=await fetch('/api/scan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const d=await r.json();
+    if(d.ok){
+      scanActive=true;
+      document.getElementById('scan-btn').style.display='none';
+      document.getElementById('stop-btn').style.display='block';
+      setScanUI(true);
+      showToast('i',t('scan_started'));
     }
-  } catch(e) {
-    showToast('error', '⚠ Bağlantı hatası');
-  }
+  }catch(e){showToast('e',t('conn_err'))}
 }
 
-async function stopScan() {
-  const btn  = document.getElementById('scan-btn');
-  const stop = document.getElementById('stop-btn');
-  try {
-    await fetch('/api/stop', {method: 'POST'});
-  } catch(e) {}
-  scanActive = false;
-  btn.style.display  = 'block';
-  stop.style.display = 'none';
-  setScanStatus(false);
-  showToast('info', '⏹ Tarama durduruldu');
+async function stopScan(){
+  try{ await fetch('/api/stop',{method:'POST'}) }catch(e){}
+  scanActive=false;
+  document.getElementById('scan-btn').style.display='block';
+  document.getElementById('stop-btn').style.display='none';
+  setScanUI(false);
+  showToast('i',t('scan_stopped'));
 }
 
-async function clearSignals() {
-  if (!confirm('Tüm sinyaller silinsin mi?')) return;
-  await fetch('/api/clear', {method:'POST'});
-  lastSigIds.clear();
-  renderSignals([], {total:0,wins:0,losses:0,pending:0});
-  showToast('info', '🗑 Sinyaller temizlendi');
+async function clearSigs(){
+  await fetch('/api/clear',{method:'POST'});
+  knownIds.clear(); renderSignals([],{total:0,wins:0,losses:0,pending:0,win_rate:0});
+  showToast('i',t('cleared'));
 }
 
-// ── Polling ───────────────────────────────────────────────
-function startPolling() {
-  pollTimer = setInterval(fetchSignals, 5000);
-  fetchSignals();
+function setScanUI(on){
+  const dot=document.getElementById('sdot'),lbl=document.getElementById('slabel');
+  dot.classList.toggle('on',on);
+  lbl.textContent=on?'SCANNING':'HAZIR';
 }
 
-async function fetchSignals() {
-  try {
-    const r = await fetch('/api/signals');
-    if (r.status === 403) { clearInterval(pollTimer); location.reload(); return; }
-    const d = await r.json();
-    renderSignals(d.signals || [], d.stats || {});
-    updateScanStatus(d.status || {});
-  } catch(e) {}
+// ══ POLL ═════════════════════════════════════════
+let pollTimer=null, knownIds=new Set();
+
+function startPoll(){ pollTimer=setInterval(fetchData,4000); fetchData(); }
+
+async function fetchData(){
+  try{
+    const r=await fetch('/api/signals');
+    if(r.status===403){clearInterval(pollTimer);location.reload();return}
+    const d=await r.json();
+    renderSignals(d.signals||[],d.stats||{});
+    renderChart(d.chart||[]);
+    updateScanUI(d.status||{});
+  }catch(e){}
 }
 
-// ── Render ────────────────────────────────────────────────
-function renderSignals(signals, stats) {
-  // Header istatistikleri
-  const wins   = stats.wins   || 0;
-  const losses = stats.losses || 0;
-  const total  = stats.total  || 0;
-  const wr     = total > 0 ? ((wins / (wins+losses)) * 100).toFixed(1) : null;
+// ══ RENDER SIGNALS ════════════════════════════════
+function renderSignals(sigs,stats){
+  const w=stats.wins||0,l=stats.losses||0,tot=stats.total||0;
+  const wr=stats.win_rate||0;
+  document.getElementById('h-total').textContent=tot;
+  document.getElementById('h-wins').textContent=w;
+  document.getElementById('h-losses').textContent=l;
+  document.getElementById('h-wr').textContent=wr?`%${wr}`:'—';
+  document.getElementById('wr-big').textContent=wr?`%${wr}`:'—';
+  document.getElementById('wr-fill').style.width=wr?`${wr}%`:'0%';
+  document.getElementById('st-total').textContent=tot;
+  document.getElementById('st-wins').textContent=w;
+  document.getElementById('st-losses').textContent=l;
+  document.getElementById('st-wr').textContent=wr?`%${wr}`:'—';
+  document.getElementById('sig-cnt').textContent=sigs.length;
+  document.getElementById('last-upd').textContent=new Date().toLocaleTimeString();
 
-  document.getElementById('stat-total').textContent   = total;
-  document.getElementById('stat-wins').textContent    = wins;
-  document.getElementById('stat-losses').textContent  = losses;
-  document.getElementById('stat-wr').textContent      = wr ? `%${wr}` : '—';
-  document.getElementById('wr-big').textContent       = wr ? `%${wr}` : '—';
-  document.getElementById('wr-bar').style.width       = wr ? `${wr}%` : '0%';
-  document.getElementById('sig-badge').textContent    = signals.length;
-  document.getElementById('last-update').textContent  =
-    `Son güncelleme: ${new Date().toLocaleTimeString('tr-TR')}`;
-
-  const container = document.getElementById('signal-container');
-
-  if (!signals.length) {
-    container.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">📡</div>
-        <div class="empty-title">Sinyal Bekleniyor</div>
-        <div class="empty-sub">Tarama başlatmak için sol paneli kullanın</div>
-      </div>`;
+  const cont=document.getElementById('sig-container');
+  if(!sigs.length){
+    cont.innerHTML=`<div class="empty"><div class="empty-icon">📡</div><div class="empty-t">${t('waiting')}</div><div class="empty-s">${t('start_hint')}</div></div>`;
     return;
   }
+  let grid=cont.querySelector('.sig-grid');
+  if(!grid){cont.innerHTML='<div class="sig-grid"></div>';grid=cont.querySelector('.sig-grid')}
 
-  // Sadece yeni gelen sinyalleri ekle, mevcut olanları güncelle
-  const grid = container.querySelector('.signals-grid') || (() => {
-    container.innerHTML = '<div class="signals-grid"></div>';
-    return container.querySelector('.signals-grid');
-  })();
-
-  signals.forEach(sig => {
-    const existing = document.getElementById(`sig-${sig.id}`);
-    if (existing) {
-      // Sadece status güncelle (win/loss geldi mi?)
-      updateCardStatus(existing, sig);
-    } else if (!lastSigIds.has(sig.id)) {
-      lastSigIds.add(sig.id);
-      const card = createCard(sig);
-      grid.insertBefore(card, grid.firstChild);
-      if (sig.direction === 'AL') showToast('success', `📈 AL — ${sig.pair} (${sig.tf_key})`);
-      else showToast('error', `📉 SAT — ${sig.pair} (${sig.tf_key})`);
+  sigs.forEach(sig=>{
+    const ex=document.getElementById(`sc-${sig.id}`);
+    if(ex){ updateCard(ex,sig); }
+    else if(!knownIds.has(sig.id)){
+      knownIds.add(sig.id);
+      const card=makeCard(sig);
+      grid.insertBefore(card,grid.firstChild);
+      playBeep(sig.direction);
+      showToast(sig.direction==='AL'?'s':'e',`${sig.direction==='AL'?'📈':'📉'} ${sig.direction} — ${sig.pair} (${sig.tf_key})`);
     }
   });
 }
 
-function confClass(pct) {
-  if (pct >= 65) return 'high';
-  if (pct >= 45) return 'medium';
-  return 'low';
+function updateCard(el,sig){
+  if(sig.status==='active') return;
+  el.className=`sig-card ${sig.direction} ${sig.status}`;
+  const rb=el.querySelector('.res-badge');
+  if(rb){rb.className=`res-badge ${sig.status}`;rb.textContent=sig.status==='win'?'✅ WIN':'❌ LOSS'}
+  const exitEl=el.querySelector('.exit-val');
+  if(exitEl && sig.exit_price) exitEl.textContent=sig.exit_price;
+  const cd=el.querySelector('.countdown');
+  if(cd){cd.textContent='✓';cd.style.opacity='.4'}
 }
 
-function createCard(sig) {
-  const card = document.createElement('div');
-  card.id    = `sig-${sig.id}`;
-  card.className = `signal-card ${sig.direction} ${sig.status !== 'active' ? sig.status : ''}`;
+function makeCard(sig){
+  const card=document.createElement('div');
+  card.id=`sc-${sig.id}`;
+  card.className=`sig-card ${sig.direction}`;
 
-  const typeBadge = sig.pair_type === 'forex'
-    ? '<span class="card-type-badge badge-forex">FOREX</span>'
-    : '<span class="card-type-badge badge-forex badge-crypto">CRYPTO</span>';
+  const confCls=sig.confidence>=65?'cf-h':sig.confidence>=45?'cf-m':'cf-l';
+  const confColor=sig.confidence>=65?'var(--green)':sig.confidence>=45?'var(--yellow)':'var(--red)';
+  const ls=sig.layer_scores||{};
+  const layerHtml=[['TR',ls.trend,3],['MOM',ls.momentum,2],['OSC',ls.oscillators,2],['PA',ls.price_action,2],['VOL',ls.volume,1]]
+    .map(([l,v,m])=>`<div class="lchip ${(v||0)>0?'on':''}">${l} ${v||0}/${m}</div>`).join('');
 
-  const indicators = (sig.details || []).map(d => {
-    const cls = d.includes('🔥') ? 'has-fire' : 'has-check';
-    return `<div class="ind-item ${cls}">${d.replace(/[✅🔥]/g,'').trim()}</div>`;
-  }).join('');
+  const resolveAt=sig.resolve_at;
+  const cdId=`cd-${sig.id}`;
 
-  const ls = sig.layer_scores || {};
-  const layerChips = [
-    ['TREND', ls.trend, 3], ['MOM', ls.momentum, 2],
-    ['OSC', ls.oscillators, 2], ['PA', ls.price_action, 2], ['VOL', ls.volume, 1]
-  ].map(([l, v, m]) =>
-    `<div class="layer-chip ${v>0?'active':''}">${l} ${v||0}/${m}</div>`
-  ).join('');
-
-  const resultHtml = sig.status === 'win'
-    ? `<div class="result-overlay win">✅ WIN</div>`
-    : sig.status === 'loss'
-    ? `<div class="result-overlay loss">❌ LOSS</div>`
-    : '';
-
-  const exitLine = sig.exit_price
-    ? `<div class="cstat"><div class="cstat-val" style="color:var(--muted)">${sig.exit_price}</div><div class="cstat-lbl">Çıkış</div></div>`
-    : `<div class="cstat"><div class="cstat-val" style="color:var(--muted)">—</div><div class="cstat-lbl">Çıkış</div></div>`;
-
-  const confPct   = sig.confidence;
-  const confCls   = confClass(confPct);
-  const confColor = confCls==='high' ? 'var(--green)' : confCls==='medium' ? 'var(--yellow)' : 'var(--red)';
-
-  card.innerHTML = `
-    ${resultHtml}
-    <div class="card-header">
+  card.innerHTML=`
+    <div class="res-badge ${sig.status!=='active'?sig.status:''}">
+      ${sig.status==='win'?'✅ WIN':sig.status==='loss'?'❌ LOSS':''}
+    </div>
+    <div class="card-top">
       <div>
-        <span class="card-pair">${sig.pair}</span>${typeBadge}
+        <span class="card-pair">${sig.pair}</span>
+        <span class="card-badge ${sig.pair_type==='forex'?'b-forex':'b-crypto'}">${sig.pair_type==='forex'?'FOREX':'CRYPTO'}</span>
       </div>
-      <div class="card-time">${sig.time_str}</div>
-    </div>
-
-    <div class="card-direction">
-      <div class="direction-badge dir-${sig.direction}">
-        ${sig.direction === 'AL' ? '↑ AL' : '↓ SAT'}
+      <div class="card-time-more">
+        <span class="card-time">${sig.time_str}</span>
+        <button class="more-btn" onclick='openDetail(${JSON.stringify(sig).replace(/'/g,"&#39;")})' title="Detaylar">⋯</button>
       </div>
-      <div class="card-expiry">⏱ ${sig.expiry}</div>
     </div>
-
+    <div class="card-dir">
+      <div class="dir-badge dir-${sig.direction}">${sig.direction==='AL'?'↑ AL':'↓ SAT'}</div>
+      <div class="card-exp">⏱ ${sig.expiry}</div>
+      <div class="countdown ${sig.status!=='active'?'':'ending-check'}" id="${cdId}">--:--</div>
+    </div>
     <div class="conf-row">
-      <span class="conf-label">GÜVEN</span>
-      <div class="conf-bar"><div class="conf-fill ${confCls}" style="width:${confPct}%"></div></div>
-      <span class="conf-pct" style="color:${confColor}">%${confPct}</span>
+      <span class="conf-lbl">GÜVEN</span>
+      <div class="conf-bar"><div class="conf-fill ${confCls}" style="width:${sig.confidence}%"></div></div>
+      <span class="conf-pct" style="color:${confColor}">%${sig.confidence}</span>
     </div>
-
     <div class="card-stats">
-      <div class="cstat">
-        <div class="cstat-val" style="color:var(--accent)">${sig.score}/${sig.max_score}</div>
-        <div class="cstat-lbl">Skor</div>
-      </div>
-      <div class="cstat">
-        <div class="cstat-val" style="color:var(--text)">${sig.adx}</div>
-        <div class="cstat-lbl">ADX</div>
-      </div>
-      <div class="cstat">
-        <div class="cstat-val" style="color:var(--text)">${sig.entry_price}</div>
-        <div class="cstat-lbl">Giriş</div>
-      </div>
+      <div class="cs"><div class="cs-v" style="color:var(--accent)">${sig.score}/${sig.max_score}</div><div class="cs-l">Skor</div></div>
+      <div class="cs"><div class="cs-v">${sig.adx}</div><div class="cs-l">ADX</div></div>
+      <div class="cs"><div class="cs-v">${sig.entry_price}</div><div class="cs-l">Giriş</div></div>
     </div>
-
-    <div class="layer-row">${layerChips}</div>
-
-    ${indicators ? `<div class="indicators">${indicators}</div>` : ''}
+    <div class="layers">${layerHtml}</div>
   `;
+  // Countdown başlat
+  if(sig.status==='active') startCountdown(cdId, resolveAt);
   return card;
 }
 
-function updateCardStatus(card, sig) {
-  if (sig.status === 'active') return;
-  card.classList.remove('win','loss');
-  card.classList.add(sig.status);
+// ══ COUNTDOWN ════════════════════════════════════
+const countdownTimers={};
+function startCountdown(id, resolveAt){
+  if(countdownTimers[id]) clearInterval(countdownTimers[id]);
+  countdownTimers[id]=setInterval(()=>{
+    const el=document.getElementById(id);
+    if(!el){clearInterval(countdownTimers[id]);return}
+    const rem=Math.max(0,new Date(resolveAt)-Date.now());
+    const m=Math.floor(rem/60000),s=Math.floor((rem%60000)/1000);
+    el.textContent=`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    el.classList.toggle('ending',rem<30000&&rem>0);
+    if(rem<=0){el.textContent='✓';el.style.opacity='.4';clearInterval(countdownTimers[id])}
+  },1000);
+}
 
-  // Result overlay güncelle
-  let overlay = card.querySelector('.result-overlay');
-  if (!overlay) {
-    overlay = document.createElement('div');
-    card.insertBefore(overlay, card.firstChild);
+// ══ CHART ════════════════════════════════════════
+function renderChart(data){
+  const cont=document.getElementById('chart-bars');
+  if(!data||!data.length){
+    cont.innerHTML=`<div class="empty-t" style="font-size:9px">${t('no_data')}</div>`;
+    return;
   }
-  overlay.className = `result-overlay ${sig.status}`;
-  overlay.innerHTML = sig.status === 'win' ? '✅ WIN' : '❌ LOSS';
-
-  // Çıkış fiyatını güncelle
-  if (sig.exit_price) {
-    const stats = card.querySelectorAll('.cstat');
-    stats.forEach(s => {
-      if (s.querySelector('.cstat-lbl')?.textContent === 'Çıkış') {
-        s.querySelector('.cstat-val').textContent = sig.exit_price;
-      }
-    });
-  }
+  const maxH=70;
+  cont.innerHTML=data.map(d=>`
+    <div class="chart-bar ${d.win?'win-bar':'loss-bar'}" style="height:${maxH*(d.win?1:.4)}px">
+      <div class="bar-tip">${d.pair} ${d.dir}</div>
+    </div>
+  `).join('');
 }
 
-function setScanStatus(running) {
-  scanRunning = running;
-  const dot   = document.getElementById('scan-dot');
-  const label = document.getElementById('scan-label');
-  if (running) {
-    dot.classList.add('active');
-    label.textContent = 'TARANIYOR';
-  } else {
-    dot.classList.remove('active');
-    label.textContent = 'HAZIR';
-  }
+// ══ DETAIL MODAL ═════════════════════════════════
+function openDetail(sig){
+  document.getElementById('modal-title').textContent=`${sig.pair} — ${sig.tf_key}`;
+  const dirColor=sig.direction==='AL'?'var(--green)':'var(--red)';
+  const inds=(sig.details||[]).map(d=>{
+    const cls=d.includes('✅')||d.includes('🔥')?'pos':'neu';
+    return `<div class="ind-item ${cls}">• ${d.replace(/[✅🔥⚠️]/g,'').trim()}</div>`;
+  }).join('');
+  const ls=sig.layer_scores||{};
+  document.getElementById('modal-body').innerHTML=`
+    <div class="modal-row"><span class="mr-l">Yön</span><span class="mr-v" style="color:${dirColor}">${sig.direction==='AL'?'↑ AL (Yükseliş)':'↓ SAT (Düşüş)'}</span></div>
+    <div class="modal-row"><span class="mr-l">Parite</span><span class="mr-v">${sig.pair}</span></div>
+    <div class="modal-row"><span class="mr-l">Vade</span><span class="mr-v">${sig.expiry}</span></div>
+    <div class="modal-row"><span class="mr-l">Giriş Fiyatı</span><span class="mr-v">${sig.entry_price}</span></div>
+    <div class="modal-row"><span class="mr-l">Çıkış Fiyatı</span><span class="mr-v exit-val">${sig.exit_price||'Bekleniyor...'}</span></div>
+    <div class="modal-row"><span class="mr-l">Güven Skoru</span><span class="mr-v" style="color:var(--accent)">${sig.score}/${sig.max_score} (%${sig.confidence})</span></div>
+    <div class="modal-row"><span class="mr-l">ADX (Trend)</span><span class="mr-v">${sig.adx}</span></div>
+    <div class="modal-row"><span class="mr-l">Risk</span><span class="mr-v">${sig.risk==='high'?'🔴 Yüksek':sig.risk==='mid'?'🟡 Orta':'🟢 Düşük'}</span></div>
+    <div class="modal-row"><span class="mr-l">Durum</span><span class="mr-v">${sig.status==='active'?'⏳ Aktif':sig.status==='win'?'✅ WIN':'❌ LOSS'}</span></div>
+    <div class="modal-row"><span class="mr-l">Katmanlar</span><span class="mr-v" style="font-size:9px">
+      TR:${ls.trend||0}/3 MOM:${ls.momentum||0}/2 OSC:${ls.oscillators||0}/2 PA:${ls.price_action||0}/2 VOL:${ls.volume||0}/1
+    </span></div>
+    <div class="ind-list">${inds}</div>
+  `;
+  document.getElementById('detail-modal').classList.add('open');
+}
+function closeModal(){ document.getElementById('detail-modal').classList.remove('open') }
+
+// ══ SETTINGS ═════════════════════════════════════
+function openSettings(){
+  document.getElementById('set-lang').value=currentLang;
+  document.querySelectorAll('.theme-btn').forEach(b=>b.classList.toggle('active',b.dataset.theme===currentTheme));
+  document.getElementById('sound-toggle').checked=soundEnabled;
+  document.getElementById('set-user-info').textContent=userName||'—';
+  document.getElementById('settings-modal').classList.add('open');
+}
+function closeSettings(){ document.getElementById('settings-modal').classList.remove('open') }
+
+async function saveSettings(){
+  const lang=document.getElementById('set-lang').value;
+  const theme=currentTheme;
+  soundEnabled=document.getElementById('sound-toggle').checked;
+  try{
+    await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lang,theme})});
+    applyLang(lang); setTheme(theme);
+    showToast('s',t('saved'));
+    closeSettings();
+  }catch(e){showToast('e',t('conn_err'))}
 }
 
-function updateScanStatus(status) {
-  if (status.running) setScanStatus(true);
+// ══ PANEL / TAB ═══════════════════════════════════
+function switchPanel(id){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(`panel-${id}`).classList.add('active');
+  event.target.classList.add('active');
 }
 
-// ── Toast ─────────────────────────────────────────────────
-let toastTimer = null;
-function showToast(type, msg) {
-  const t = document.getElementById('toast');
-  t.className = `toast ${type} show`;
-  t.innerHTML = msg;
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
+// ══ SCAN STATUS ═══════════════════════════════════
+function updateScanUI(status){
+  if(status.running){setScanUI(true)}
 }
+
+// ══ TOAST ════════════════════════════════════════
+let toastTimer=null;
+function showToast(type,msg){
+  const t=document.getElementById('toast');
+  t.className=`toast ${type} show`;t.textContent=msg;
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),3500);
+}
+
+// ══ INIT ═════════════════════════════════════════
+checkSession();
 </script>
-
 </body>
 </html>
