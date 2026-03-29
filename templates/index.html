@@ -925,6 +925,10 @@ body::before {
         <button class="scan-btn" id="scan-btn" onclick="startScan()">
           <span id="scan-btn-text">⚡ TARA</span>
         </button>
+        <button class="scan-btn" id="stop-btn" onclick="stopScan()"
+                style="margin-top:8px;border-color:var(--red);color:var(--red);display:none">
+          <span>⏹ DURDUR</span>
+        </button>
         <button class="clear-btn" onclick="clearSignals()">🗑 SİNYALLERİ TEMİZLE</button>
       </div>
 
@@ -1029,13 +1033,12 @@ function getSelected(group) {
 }
 
 // ── Tarama ───────────────────────────────────────────────
+let scanActive = false;
+
 async function startScan() {
-  if (scanRunning) return;
   const btn  = document.getElementById('scan-btn');
+  const stop = document.getElementById('stop-btn');
   const text = document.getElementById('scan-btn-text');
-  btn.disabled = true;
-  text.textContent = '⏳ TARANIYOR...';
-  setScanStatus(true);
 
   const payload = {
     pairs:     getSelected('type'),
@@ -1052,19 +1055,28 @@ async function startScan() {
     });
     const d = await r.json();
     if (d.ok) {
-      showToast('info', '⚡ Tarama başlatıldı — sinyaller geliyor');
-      setTimeout(() => {
-        btn.disabled = false;
-        text.textContent = '⚡ TARA';
-        setScanStatus(false);
-      }, 15000);
+      scanActive = true;
+      btn.style.display  = 'none';
+      stop.style.display = 'block';
+      setScanStatus(true);
+      showToast('info', '⚡ Sürekli tarama başlatıldı');
     }
   } catch(e) {
-    btn.disabled = false;
-    text.textContent = '⚡ TARA';
-    setScanStatus(false);
     showToast('error', '⚠ Bağlantı hatası');
   }
+}
+
+async function stopScan() {
+  const btn  = document.getElementById('scan-btn');
+  const stop = document.getElementById('stop-btn');
+  try {
+    await fetch('/api/stop', {method: 'POST'});
+  } catch(e) {}
+  scanActive = false;
+  btn.style.display  = 'block';
+  stop.style.display = 'none';
+  setScanStatus(false);
+  showToast('info', '⏹ Tarama durduruldu');
 }
 
 async function clearSignals() {
