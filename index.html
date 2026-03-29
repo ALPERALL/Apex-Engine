@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>APEX Signal Engine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ── Reset & Variables ─────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #080b0f;
+  --bg2:       #0d1117;
+  --bg3:       #111820;
+  --border:    rgba(255,255,255,0.07);
+  --border2:   rgba(255,255,255,0.12);
+  --text:      #e8edf2;
+  --muted:     #5a6a7a;
+  --accent:    #00d4ff;
+  --accent2:   #0099cc;
+  --green:     #00e676;
+  --red:       #ff3d5a;
+  --yellow:    #ffc107;
+  --gold:      #ffb300;
+  --glow:      0 0 30px rgba(0,212,255,0.15);
+  --font-mono: 'Space Mono', monospace;
+  --font-main: 'Syne', sans-serif;
+}
+
+html, body { height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-main);
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* ── Grid noise overlay ────────────────────────────────── */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(0,212,255,0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,255,0.015) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Login Screen ──────────────────────────────────────── */
+#login-screen {
+  position: fixed; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100;
+  background: var(--bg);
+}
+
+.login-card {
+  width: 380px;
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  padding: 48px 40px;
+  position: relative;
+  box-shadow: var(--glow), 0 40px 80px rgba(0,0,0,0.6);
+}
+
+.login-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 40px; right: 40px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+}
+
+.login-logo {
+  text-align: center;
+  margin-bottom: 36px;
+}
+
+.login-logo .apex-text {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 6px;
+  color: var(--accent);
+  text-transform: uppercase;
+}
+
+.login-logo .sub {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 3px;
+  margin-top: 4px;
+}
+
+.login-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.login-input {
+  width: 100%;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 14px 16px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.login-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.login-btn {
+  width: 100%;
+  margin-top: 20px;
+  padding: 14px;
+  background: var(--accent);
+  color: #000;
+  border: none;
+  border-radius: 2px;
+  font-family: var(--font-main);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.login-btn:hover { background: #00b8d9; transform: translateY(-1px); }
+.login-btn:active { transform: translateY(0); }
+
+.login-error {
+  margin-top: 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--red);
+  text-align: center;
+  display: none;
+}
+
+/* ── Main App ──────────────────────────────────────────── */
+#app { display: none; position: relative; z-index: 1; min-height: 100vh; }
+
+/* ── Header ────────────────────────────────────────────── */
+.header {
+  border-bottom: 1px solid var(--border);
+  padding: 0 32px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky; top: 0;
+  background: rgba(8,11,15,0.95);
+  backdrop-filter: blur(10px);
+  z-index: 50;
+}
+
+.header-logo {
+  display: flex; align-items: center; gap: 12px;
+}
+
+.logo-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--accent);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+.logo-text {
+  font-weight: 800;
+  font-size: 16px;
+  letter-spacing: 4px;
+  color: var(--accent);
+}
+
+.logo-ver {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--muted);
+  letter-spacing: 1px;
+  margin-top: 2px;
+}
+
+.header-stats {
+  display: flex; gap: 24px; align-items: center;
+}
+
+.hstat {
+  text-align: center;
+}
+
+.hstat-val {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.hstat-lbl {
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+.hstat.green .hstat-val { color: var(--green); }
+.hstat.red .hstat-val   { color: var(--red); }
+.hstat.cyan .hstat-val  { color: var(--accent); }
+.hstat.gold .hstat-val  { color: var(--gold); }
+
+.header-right {
+  display: flex; align-items: center; gap: 16px;
+}
+
+.scan-indicator {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 1px;
+}
+
+.scan-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: all 0.3s;
+}
+
+.scan-dot.active {
+  background: var(--green);
+  box-shadow: 0 0 8px var(--green);
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; } 50% { opacity: 0.3; }
+}
+
+.btn-logout {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 6px 14px;
+  border-radius: 2px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-logout:hover { border-color: var(--red); color: var(--red); }
+
+/* ── Layout ────────────────────────────────────────────── */
+.layout {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  min-height: calc(100vh - 60px);
+}
+
+/* ── Sidebar ───────────────────────────────────────────── */
+.sidebar {
+  border-right: 1px solid var(--border);
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  background: var(--bg2);
+}
+
+.section-title {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  display: flex; align-items: center; gap: 8px;
+}
+
+.section-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* Seçenek grupları */
+.option-group { margin-bottom: 20px; }
+
+.option-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.option-pills {
+  display: flex; flex-wrap: wrap; gap: 6px;
+}
+
+.pill {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  background: transparent;
+  user-select: none;
+}
+
+.pill:hover { border-color: var(--border2); color: var(--text); }
+
+.pill.selected {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #000;
+  font-weight: 700;
+}
+
+.pill.selected.red-pill {
+  background: var(--red);
+  border-color: var(--red);
+}
+.pill.selected.yellow-pill {
+  background: var(--yellow);
+  border-color: var(--yellow);
+}
+.pill.selected.green-pill {
+  background: var(--green);
+  border-color: var(--green);
+}
+
+/* Pair selector */
+.pair-select {
+  width: 100%;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 10px 12px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.pair-select:focus { border-color: var(--accent); }
+
+/* Scan button */
+.scan-btn {
+  width: 100%;
+  padding: 16px;
+  background: transparent;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  border-radius: 2px;
+  font-family: var(--font-main);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+.scan-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--accent);
+  transform: translateX(-100%);
+  transition: transform 0.3s ease;
+  z-index: 0;
+}
+
+.scan-btn:hover::before { transform: translateX(0); }
+.scan-btn:hover { color: #000; }
+.scan-btn span { position: relative; z-index: 1; }
+
+.scan-btn:disabled {
+  border-color: var(--muted);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+.scan-btn:disabled::before { display: none; }
+
+.clear-btn {
+  width: 100%;
+  padding: 10px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: 2px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 8px;
+}
+
+.clear-btn:hover { border-color: var(--red); color: var(--red); }
+
+/* Win rate gauge */
+.winrate-box {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 16px;
+  text-align: center;
+}
+
+.winrate-num {
+  font-family: var(--font-mono);
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--green);
+  line-height: 1;
+}
+
+.winrate-lbl {
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+.winrate-bar {
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  margin-top: 12px;
+  overflow: hidden;
+}
+
+.winrate-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--green), var(--accent));
+  border-radius: 2px;
+  transition: width 0.6s ease;
+}
+
+/* ── Main Content ──────────────────────────────────────── */
+.main-content {
+  padding: 24px 28px;
+  overflow-y: auto;
+}
+
+/* Signals header */
+.signals-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.signals-title {
+  font-size: 11px;
+  letter-spacing: 3px;
+  color: var(--muted);
+  text-transform: uppercase;
+  font-family: var(--font-mono);
+  display: flex; align-items: center; gap: 10px;
+}
+
+.signal-count-badge {
+  background: var(--accent);
+  color: #000;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  letter-spacing: 0;
+}
+
+/* Empty state */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  text-align: center;
+  gap: 16px;
+}
+
+.empty-icon {
+  font-size: 48px;
+  opacity: 0.3;
+}
+
+.empty-title {
+  font-size: 14px;
+  letter-spacing: 2px;
+  color: var(--muted);
+  text-transform: uppercase;
+  font-family: var(--font-mono);
+}
+
+.empty-sub {
+  font-size: 12px;
+  color: var(--muted);
+  opacity: 0.6;
+}
+
+/* Signal cards grid */
+.signals-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+/* Signal Card */
+.signal-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+  animation: slideIn 0.4s ease;
+  transition: border-color 0.2s, transform 0.2s;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.signal-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+
+.signal-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+}
+
+.signal-card.AL::before { background: linear-gradient(90deg, transparent, var(--green), transparent); }
+.signal-card.SAT::before { background: linear-gradient(90deg, transparent, var(--red), transparent); }
+.signal-card.win  { border-color: rgba(0,230,118,0.3); }
+.signal-card.loss { border-color: rgba(255,61,90,0.3); }
+
+/* Card header */
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.card-pair {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 1px;
+}
+
+.card-type-badge {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 1px;
+  padding: 3px 8px;
+  border-radius: 2px;
+  text-transform: uppercase;
+  margin-left: 8px;
+}
+
+.badge-forex  { background: rgba(0,212,255,0.1); color: var(--accent); border: 1px solid rgba(0,212,255,0.2); }
+.badge-crypto { background: rgba(255,179,0,0.1); color: var(--gold);   border: 1px solid rgba(255,179,0,0.2); }
+
+.card-time {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted);
+}
+
+/* Direction big display */
+.card-direction {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.direction-badge {
+  padding: 6px 16px;
+  border-radius: 2px;
+  font-family: var(--font-main);
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: 3px;
+}
+
+.dir-AL  { background: rgba(0,230,118,0.12); color: var(--green); border: 1px solid rgba(0,230,118,0.3); }
+.dir-SAT { background: rgba(255,61,90,0.12);  color: var(--red);   border: 1px solid rgba(255,61,90,0.3); }
+
+.card-expiry {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted);
+  background: var(--bg3);
+  padding: 4px 10px;
+  border-radius: 2px;
+  border: 1px solid var(--border);
+}
+
+/* Confidence bar */
+.conf-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.conf-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--muted);
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.conf-bar {
+  flex: 1;
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.conf-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.6s ease;
+}
+
+.conf-fill.high   { background: linear-gradient(90deg, var(--green), #00ffa0); }
+.conf-fill.medium { background: linear-gradient(90deg, var(--yellow), #ffd740); }
+.conf-fill.low    { background: linear-gradient(90deg, var(--red), #ff6b6b); }
+
+.conf-pct {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  min-width: 32px;
+  text-align: right;
+}
+
+/* Card stats row */
+.card-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.cstat {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 8px;
+  text-align: center;
+}
+
+.cstat-val {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.cstat-lbl {
+  font-size: 8px;
+  letter-spacing: 1px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+/* Indicators */
+.indicators {
+  margin-top: 10px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.ind-item {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--muted);
+  padding: 2px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ind-item.has-check { color: rgba(0,230,118,0.8); }
+.ind-item.has-fire  { color: var(--accent); }
+
+/* Result overlay */
+.result-overlay {
+  display: none;
+  position: absolute;
+  top: 10px; right: 10px;
+  padding: 6px 14px;
+  border-radius: 2px;
+  font-family: var(--font-main);
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 2px;
+}
+
+.result-overlay.win  { display: flex; background: rgba(0,230,118,0.15); color: var(--green); border: 1px solid rgba(0,230,118,0.4); }
+.result-overlay.loss { display: flex; background: rgba(255,61,90,0.15);  color: var(--red);   border: 1px solid rgba(255,61,90,0.4); }
+
+/* Layer scores mini */
+.layer-row {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.layer-chip {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  padding: 2px 6px;
+  border-radius: 2px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  letter-spacing: 1px;
+}
+
+.layer-chip.active { color: var(--accent); border-color: rgba(0,212,255,0.3); }
+
+/* ── Toast ─────────────────────────────────────────────── */
+.toast {
+  position: fixed;
+  bottom: 24px; right: 24px;
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  padding: 14px 20px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 1px;
+  z-index: 1000;
+  transform: translateY(80px);
+  opacity: 0;
+  transition: all 0.3s;
+  display: flex; align-items: center; gap: 10px;
+}
+
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast.success { border-color: rgba(0,230,118,0.4); color: var(--green); }
+.toast.error   { border-color: rgba(255,61,90,0.4);  color: var(--red); }
+.toast.info    { border-color: rgba(0,212,255,0.4);   color: var(--accent); }
+
+/* ── Scrollbar ─────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+/* ── Responsive ────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar { border-right: none; border-bottom: 1px solid var(--border); }
+  .header-stats { display: none; }
+  .signals-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── LOGIN ─────────────────────────────────────────── -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="apex-text">APEX</div>
+      <div class="sub">SIGNAL ENGINE v2.0</div>
+    </div>
+    <label class="login-label">Erişim Şifresi</label>
+    <input type="password" class="login-input" id="pw-input"
+           placeholder="şifrenizi girin" autocomplete="off"
+           onkeydown="if(event.key==='Enter') doLogin()">
+    <button class="login-btn" onclick="doLogin()">GİRİŞ YAP</button>
+    <div class="login-error" id="login-error">⚠ Yanlış şifre</div>
+  </div>
+</div>
+
+<!-- ── MAIN APP ───────────────────────────────────────── -->
+<div id="app">
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-logo">
+      <div class="logo-dot"></div>
+      <div>
+        <div class="logo-text">APEX</div>
+        <div class="logo-ver">SIGNAL ENGINE v2.0</div>
+      </div>
+    </div>
+
+    <div class="header-stats">
+      <div class="hstat cyan">
+        <div class="hstat-val" id="stat-total">0</div>
+        <div class="hstat-lbl">Toplam</div>
+      </div>
+      <div class="hstat green">
+        <div class="hstat-val" id="stat-wins">0</div>
+        <div class="hstat-lbl">WIN</div>
+      </div>
+      <div class="hstat red">
+        <div class="hstat-val" id="stat-losses">0</div>
+        <div class="hstat-lbl">LOSS</div>
+      </div>
+      <div class="hstat gold">
+        <div class="hstat-val" id="stat-wr">—</div>
+        <div class="hstat-lbl">Win Rate</div>
+      </div>
+    </div>
+
+    <div class="header-right">
+      <div class="scan-indicator">
+        <div class="scan-dot" id="scan-dot"></div>
+        <span id="scan-label">HAZIR</span>
+      </div>
+      <button class="btn-logout" onclick="doLogout()">ÇIKIŞ</button>
+    </div>
+  </header>
+
+  <!-- Layout -->
+  <div class="layout">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+
+      <div>
+        <div class="section-title">Piyasa</div>
+        <div class="option-group">
+          <span class="option-label">Tür</span>
+          <div class="option-pills" id="pills-type">
+            <div class="pill selected" data-group="type" data-val="all">Tümü</div>
+            <div class="pill" data-group="type" data-val="forex">Forex</div>
+            <div class="pill" data-group="type" data-val="crypto">Kripto</div>
+          </div>
+        </div>
+
+        <div class="option-group" id="pair-group">
+          <span class="option-label">Parite (opsiyonel)</span>
+          <select class="pair-select" id="pair-select">
+            <option value="">— Tümü —</option>
+            <optgroup label="FOREX" id="forex-opts"></optgroup>
+            <optgroup label="KRİPTO" id="crypto-opts"></optgroup>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-title">Zaman Dilimi</div>
+        <div class="option-pills" id="pills-tf">
+          <div class="pill selected" data-group="tf" data-val="all">Tümü</div>
+          <div class="pill" data-group="tf" data-val="5m">5 dk</div>
+          <div class="pill" data-group="tf" data-val="15m">15 dk</div>
+          <div class="pill" data-group="tf" data-val="30m">30 dk</div>
+          <div class="pill" data-group="tf" data-val="45m">45 dk</div>
+          <div class="pill" data-group="tf" data-val="1h">1 saat</div>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-title">Risk Seviyesi</div>
+        <div class="option-pills" id="pills-risk">
+          <div class="pill red-pill selected" data-group="risk" data-val="high">🔴 Yüksek</div>
+          <div class="pill yellow-pill" data-group="risk" data-val="mid">🟡 Orta</div>
+          <div class="pill green-pill" data-group="risk" data-val="low">🟢 Düşük</div>
+        </div>
+        <div style="margin-top:8px; font-family:var(--font-mono); font-size:9px; color:var(--muted); line-height:1.6;">
+          🔴 Min skor ≥ 4/12<br>
+          🟡 Min skor ≥ 6/12<br>
+          🟢 Min skor ≥ 8/12
+        </div>
+      </div>
+
+      <div>
+        <button class="scan-btn" id="scan-btn" onclick="startScan()">
+          <span id="scan-btn-text">⚡ TARA</span>
+        </button>
+        <button class="clear-btn" onclick="clearSignals()">🗑 SİNYALLERİ TEMİZLE</button>
+      </div>
+
+      <div>
+        <div class="section-title">İstatistik</div>
+        <div class="winrate-box">
+          <div class="winrate-num" id="wr-big">—</div>
+          <div class="winrate-lbl">Win Rate</div>
+          <div class="winrate-bar">
+            <div class="winrate-fill" id="wr-bar" style="width:0%"></div>
+          </div>
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <div class="signals-header">
+        <div class="signals-title">
+          Sinyaller
+          <span class="signal-count-badge" id="sig-badge">0</span>
+        </div>
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);letter-spacing:1px;"
+             id="last-update">—</div>
+      </div>
+
+      <div id="signal-container">
+        <div class="empty-state">
+          <div class="empty-icon">📡</div>
+          <div class="empty-title">Sinyal Bekleniyor</div>
+          <div class="empty-sub">Tarama başlatmak için sol paneli kullanın</div>
+        </div>
+      </div>
+    </main>
+
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── State ────────────────────────────────────────────────
+let pollTimer   = null;
+let lastSigIds  = new Set();
+let scanRunning = false;
+
+// ── Login / Logout ───────────────────────────────────────
+async function doLogin() {
+  const pw  = document.getElementById('pw-input').value;
+  const err = document.getElementById('login-error');
+  try {
+    const r = await fetch('/api/login', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({password: pw}),
+    });
+    const d = await r.json();
+    if (d.ok) {
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      startPolling();
+      loadPairs();
+    } else {
+      err.style.display = 'block';
+      document.getElementById('pw-input').value = '';
+    }
+  } catch(e) {
+    err.style.display = 'block';
+  }
+}
+
+async function doLogout() {
+  await fetch('/api/logout', {method:'POST'});
+  location.reload();
+}
+
+// ── Pair listesi yükle ────────────────────────────────────
+async function loadPairs() {
+  const r = await fetch('/api/pairs');
+  const d = await r.json();
+  const fo = document.getElementById('forex-opts');
+  const co = document.getElementById('crypto-opts');
+  d.forex.forEach(p => { const o = document.createElement('option'); o.value=p; o.text=p; fo.appendChild(o); });
+  d.crypto.forEach(p => { const o = document.createElement('option'); o.value=p; o.text=p; co.appendChild(o); });
+}
+
+// ── Pill seçimi ───────────────────────────────────────────
+document.querySelectorAll('.pill').forEach(pill => {
+  pill.addEventListener('click', () => {
+    const group = pill.dataset.group;
+    document.querySelectorAll(`.pill[data-group="${group}"]`).forEach(p => {
+      p.classList.remove('selected');
+    });
+    pill.classList.add('selected');
+  });
+});
+
+function getSelected(group) {
+  return document.querySelector(`.pill[data-group="${group}"].selected`)?.dataset.val || 'all';
+}
+
+// ── Tarama ───────────────────────────────────────────────
+async function startScan() {
+  if (scanRunning) return;
+  const btn  = document.getElementById('scan-btn');
+  const text = document.getElementById('scan-btn-text');
+  btn.disabled = true;
+  text.textContent = '⏳ TARANIYOR...';
+  setScanStatus(true);
+
+  const payload = {
+    pairs:     getSelected('type'),
+    timeframe: getSelected('tf'),
+    risk:      getSelected('risk'),
+    pair_name: document.getElementById('pair-select').value || null,
+  };
+
+  try {
+    const r = await fetch('/api/scan', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    });
+    const d = await r.json();
+    if (d.ok) {
+      showToast('info', '⚡ Tarama başlatıldı — sinyaller geliyor');
+      setTimeout(() => {
+        btn.disabled = false;
+        text.textContent = '⚡ TARA';
+        setScanStatus(false);
+      }, 15000);
+    }
+  } catch(e) {
+    btn.disabled = false;
+    text.textContent = '⚡ TARA';
+    setScanStatus(false);
+    showToast('error', '⚠ Bağlantı hatası');
+  }
+}
+
+async function clearSignals() {
+  if (!confirm('Tüm sinyaller silinsin mi?')) return;
+  await fetch('/api/clear', {method:'POST'});
+  lastSigIds.clear();
+  renderSignals([], {total:0,wins:0,losses:0,pending:0});
+  showToast('info', '🗑 Sinyaller temizlendi');
+}
+
+// ── Polling ───────────────────────────────────────────────
+function startPolling() {
+  pollTimer = setInterval(fetchSignals, 5000);
+  fetchSignals();
+}
+
+async function fetchSignals() {
+  try {
+    const r = await fetch('/api/signals');
+    if (r.status === 403) { clearInterval(pollTimer); location.reload(); return; }
+    const d = await r.json();
+    renderSignals(d.signals || [], d.stats || {});
+    updateScanStatus(d.status || {});
+  } catch(e) {}
+}
+
+// ── Render ────────────────────────────────────────────────
+function renderSignals(signals, stats) {
+  // Header istatistikleri
+  const wins   = stats.wins   || 0;
+  const losses = stats.losses || 0;
+  const total  = stats.total  || 0;
+  const wr     = total > 0 ? ((wins / (wins+losses)) * 100).toFixed(1) : null;
+
+  document.getElementById('stat-total').textContent   = total;
+  document.getElementById('stat-wins').textContent    = wins;
+  document.getElementById('stat-losses').textContent  = losses;
+  document.getElementById('stat-wr').textContent      = wr ? `%${wr}` : '—';
+  document.getElementById('wr-big').textContent       = wr ? `%${wr}` : '—';
+  document.getElementById('wr-bar').style.width       = wr ? `${wr}%` : '0%';
+  document.getElementById('sig-badge').textContent    = signals.length;
+  document.getElementById('last-update').textContent  =
+    `Son güncelleme: ${new Date().toLocaleTimeString('tr-TR')}`;
+
+  const container = document.getElementById('signal-container');
+
+  if (!signals.length) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">📡</div>
+        <div class="empty-title">Sinyal Bekleniyor</div>
+        <div class="empty-sub">Tarama başlatmak için sol paneli kullanın</div>
+      </div>`;
+    return;
+  }
+
+  // Sadece yeni gelen sinyalleri ekle, mevcut olanları güncelle
+  const grid = container.querySelector('.signals-grid') || (() => {
+    container.innerHTML = '<div class="signals-grid"></div>';
+    return container.querySelector('.signals-grid');
+  })();
+
+  signals.forEach(sig => {
+    const existing = document.getElementById(`sig-${sig.id}`);
+    if (existing) {
+      // Sadece status güncelle (win/loss geldi mi?)
+      updateCardStatus(existing, sig);
+    } else if (!lastSigIds.has(sig.id)) {
+      lastSigIds.add(sig.id);
+      const card = createCard(sig);
+      grid.insertBefore(card, grid.firstChild);
+      if (sig.direction === 'AL') showToast('success', `📈 AL — ${sig.pair} (${sig.tf_key})`);
+      else showToast('error', `📉 SAT — ${sig.pair} (${sig.tf_key})`);
+    }
+  });
+}
+
+function confClass(pct) {
+  if (pct >= 65) return 'high';
+  if (pct >= 45) return 'medium';
+  return 'low';
+}
+
+function createCard(sig) {
+  const card = document.createElement('div');
+  card.id    = `sig-${sig.id}`;
+  card.className = `signal-card ${sig.direction} ${sig.status !== 'active' ? sig.status : ''}`;
+
+  const typeBadge = sig.pair_type === 'forex'
+    ? '<span class="card-type-badge badge-forex">FOREX</span>'
+    : '<span class="card-type-badge badge-forex badge-crypto">CRYPTO</span>';
+
+  const indicators = (sig.details || []).map(d => {
+    const cls = d.includes('🔥') ? 'has-fire' : 'has-check';
+    return `<div class="ind-item ${cls}">${d.replace(/[✅🔥]/g,'').trim()}</div>`;
+  }).join('');
+
+  const ls = sig.layer_scores || {};
+  const layerChips = [
+    ['TREND', ls.trend, 3], ['MOM', ls.momentum, 2],
+    ['OSC', ls.oscillators, 2], ['PA', ls.price_action, 2], ['VOL', ls.volume, 1]
+  ].map(([l, v, m]) =>
+    `<div class="layer-chip ${v>0?'active':''}">${l} ${v||0}/${m}</div>`
+  ).join('');
+
+  const resultHtml = sig.status === 'win'
+    ? `<div class="result-overlay win">✅ WIN</div>`
+    : sig.status === 'loss'
+    ? `<div class="result-overlay loss">❌ LOSS</div>`
+    : '';
+
+  const exitLine = sig.exit_price
+    ? `<div class="cstat"><div class="cstat-val" style="color:var(--muted)">${sig.exit_price}</div><div class="cstat-lbl">Çıkış</div></div>`
+    : `<div class="cstat"><div class="cstat-val" style="color:var(--muted)">—</div><div class="cstat-lbl">Çıkış</div></div>`;
+
+  const confPct   = sig.confidence;
+  const confCls   = confClass(confPct);
+  const confColor = confCls==='high' ? 'var(--green)' : confCls==='medium' ? 'var(--yellow)' : 'var(--red)';
+
+  card.innerHTML = `
+    ${resultHtml}
+    <div class="card-header">
+      <div>
+        <span class="card-pair">${sig.pair}</span>${typeBadge}
+      </div>
+      <div class="card-time">${sig.time_str}</div>
+    </div>
+
+    <div class="card-direction">
+      <div class="direction-badge dir-${sig.direction}">
+        ${sig.direction === 'AL' ? '↑ AL' : '↓ SAT'}
+      </div>
+      <div class="card-expiry">⏱ ${sig.expiry}</div>
+    </div>
+
+    <div class="conf-row">
+      <span class="conf-label">GÜVEN</span>
+      <div class="conf-bar"><div class="conf-fill ${confCls}" style="width:${confPct}%"></div></div>
+      <span class="conf-pct" style="color:${confColor}">%${confPct}</span>
+    </div>
+
+    <div class="card-stats">
+      <div class="cstat">
+        <div class="cstat-val" style="color:var(--accent)">${sig.score}/${sig.max_score}</div>
+        <div class="cstat-lbl">Skor</div>
+      </div>
+      <div class="cstat">
+        <div class="cstat-val" style="color:var(--text)">${sig.adx}</div>
+        <div class="cstat-lbl">ADX</div>
+      </div>
+      <div class="cstat">
+        <div class="cstat-val" style="color:var(--text)">${sig.entry_price}</div>
+        <div class="cstat-lbl">Giriş</div>
+      </div>
+    </div>
+
+    <div class="layer-row">${layerChips}</div>
+
+    ${indicators ? `<div class="indicators">${indicators}</div>` : ''}
+  `;
+  return card;
+}
+
+function updateCardStatus(card, sig) {
+  if (sig.status === 'active') return;
+  card.classList.remove('win','loss');
+  card.classList.add(sig.status);
+
+  // Result overlay güncelle
+  let overlay = card.querySelector('.result-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    card.insertBefore(overlay, card.firstChild);
+  }
+  overlay.className = `result-overlay ${sig.status}`;
+  overlay.innerHTML = sig.status === 'win' ? '✅ WIN' : '❌ LOSS';
+
+  // Çıkış fiyatını güncelle
+  if (sig.exit_price) {
+    const stats = card.querySelectorAll('.cstat');
+    stats.forEach(s => {
+      if (s.querySelector('.cstat-lbl')?.textContent === 'Çıkış') {
+        s.querySelector('.cstat-val').textContent = sig.exit_price;
+      }
+    });
+  }
+}
+
+function setScanStatus(running) {
+  scanRunning = running;
+  const dot   = document.getElementById('scan-dot');
+  const label = document.getElementById('scan-label');
+  if (running) {
+    dot.classList.add('active');
+    label.textContent = 'TARANIYOR';
+  } else {
+    dot.classList.remove('active');
+    label.textContent = 'HAZIR';
+  }
+}
+
+function updateScanStatus(status) {
+  if (status.running) setScanStatus(true);
+}
+
+// ── Toast ─────────────────────────────────────────────────
+let toastTimer = null;
+function showToast(type, msg) {
+  const t = document.getElementById('toast');
+  t.className = `toast ${type} show`;
+  t.innerHTML = msg;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
+}
+</script>
+
+</body>
+</html>
